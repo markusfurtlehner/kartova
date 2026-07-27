@@ -35,12 +35,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { rid: win-x64,     host: windows-latest, asset: DirStat-win-x64.zip }
-          - { rid: win-arm64,   host: windows-latest, asset: DirStat-win-arm64.zip }
-          - { rid: linux-x64,   host: ubuntu-latest,  asset: DirStat-linux-x64.tar.gz }
-          - { rid: linux-arm64, host: ubuntu-latest,  asset: DirStat-linux-arm64.tar.gz }
-          - { rid: osx-x64,     host: macos-latest,   asset: DirStat-osx-x64.tar.gz }
-          - { rid: osx-arm64,   host: macos-latest,   asset: DirStat-osx-arm64.tar.gz }
+          - { rid: win-x64,     host: windows-latest, asset: Kartova-win-x64.zip }
+          - { rid: win-arm64,   host: windows-latest, asset: Kartova-win-arm64.zip }
+          - { rid: linux-x64,   host: ubuntu-latest,  asset: Kartova-linux-x64.tar.gz }
+          - { rid: linux-arm64, host: ubuntu-latest,  asset: Kartova-linux-arm64.tar.gz }
+          - { rid: osx-x64,     host: macos-latest,   asset: Kartova-osx-x64.tar.gz }
+          - { rid: osx-arm64,   host: macos-latest,   asset: Kartova-osx-arm64.tar.gz }
 
     steps:
       - uses: actions/checkout@v4
@@ -62,14 +62,14 @@ jobs:
             osx-*)
               # Ship the bundle, not the flat publish directory: Finder will not launch
               # the latter. The executable bit has to survive the archive.
-              chmod +x "${{ matrix.rid }}-bundle/DirStat.app/Contents/MacOS/DirStat"
-              tar -czf "${{ matrix.asset }}" -C "${{ matrix.rid }}-bundle" DirStat.app
+              chmod +x "${{ matrix.rid }}-bundle/Kartova.app/Contents/MacOS/Kartova"
+              tar -czf "${{ matrix.asset }}" -C "${{ matrix.rid }}-bundle" Kartova.app
               ;;
             win-*)
               7z a "${{ matrix.asset }}" "./${{ matrix.rid }}/*"
               ;;
             *)
-              chmod +x "${{ matrix.rid }}/DirStat"
+              chmod +x "${{ matrix.rid }}/Kartova"
               tar -czf "${{ matrix.asset }}" -C "${{ matrix.rid }}" .
               ;;
           esac
@@ -109,12 +109,12 @@ jobs:
 
             | Platform | Asset |
             |---|---|
-            | Windows x64 | `DirStat-win-x64.zip` |
-            | Windows arm64 | `DirStat-win-arm64.zip` |
-            | macOS Apple silicon | `DirStat-osx-arm64.tar.gz` |
-            | macOS Intel | `DirStat-osx-x64.tar.gz` |
-            | Linux x64 | `DirStat-linux-x64.tar.gz` |
-            | Linux arm64 | `DirStat-linux-arm64.tar.gz` |
+            | Windows x64 | `Kartova-win-x64.zip` |
+            | Windows arm64 | `Kartova-win-arm64.zip` |
+            | macOS Apple silicon | `Kartova-osx-arm64.tar.gz` |
+            | macOS Intel | `Kartova-osx-x64.tar.gz` |
+            | Linux x64 | `Kartova-linux-x64.tar.gz` |
+            | Linux arm64 | `Kartova-linux-arm64.tar.gz` |
 
             macOS builds are unsigned, so the first launch needs right-click then Open.
             Linux builds need `libX11`, `libICE`, `libSM` and `fontconfig`, which every

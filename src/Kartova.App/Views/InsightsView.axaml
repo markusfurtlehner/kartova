@@ -1,0 +1,217 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Kartova.App.ViewModels"
+             xmlns:views="using:Kartova.App.Views"
+             xmlns:l="using:Kartova.App.Localization"
+             mc:Ignorable="d"
+             x:Class="Kartova.App.Views.InsightsView"
+             x:DataType="vm:MainViewModel">
+
+  <UserControl.Resources>
+    <StreamGeometry x:Key="IconBack3">M 10,2 L 4,8 L 10,14</StreamGeometry>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,*,Auto" DataContext="{Binding Insights}">
+
+    <!-- ================================================= Toolbar ================================================= -->
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="14,9">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="ghost" Padding="9,6"
+                Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BackToResultsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconBack3}" Stroke="{DynamicResource TextSecondary}"
+                  StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                  Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T Common.Back}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock Grid.Column="1" Text="{Binding SummaryText}" Classes="secondary"
+                   VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="12.5" />
+
+        <Button Grid.Column="2" Classes="accent" Padding="14,7"
+                Content="{l:T Insights.Analyse}" Command="{Binding AnalyseCommand}"
+                IsEnabled="{Binding !IsBusy}" />
+      </Grid>
+    </Border>
+
+    <!-- ================================================== Body ================================================== -->
+    <Panel Grid.Row="1">
+
+      <!-- Start screen, with the warning shown before anything is found -->
+      <ScrollViewer IsVisible="{Binding !HasRun}">
+        <Border Background="{DynamicResource HeroGradient}" Padding="40">
+          <StackPanel MaxWidth="720" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="display" Text="{l:T Insights.Title}" />
+              <TextBlock Classes="secondary" TextWrapping="Wrap" LineHeight="21"
+                         Text="{l:T Insights.Subtitle}" />
+            </StackPanel>
+
+            <Border Classes="card" Padding="22">
+              <StackPanel Spacing="8">
+                <TextBlock Classes="caption" Text="{l:T Insights.StaleFile}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Slider Minimum="1" Maximum="10" Width="300" Value="{Binding StaleYears}" />
+                  <TextBlock VerticalAlignment="Center" FontWeight="Medium"
+                             Text="{Binding StaleYears, StringFormat=' {0} y'}" />
+                </StackPanel>
+                <TextBlock Classes="tertiary" FontSize="11.5" TextWrapping="Wrap"
+                           Text="{l:T Insights.StaleFileHelp}" />
+              </StackPanel>
+            </Border>
+
+            <!-- The warning is deliberately loud and deliberately before the results. -->
+            <Border Padding="18" CornerRadius="{DynamicResource RadiusMedium}"
+                    Background="{DynamicResource DangerMuted}"
+                    BorderBrush="{DynamicResource DangerBase}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <TextBlock Text="!" FontWeight="Bold" FontSize="15"
+                             Foreground="{DynamicResource DangerBase}" />
+                  <TextBlock Text="{l:T Insights.WarningTitle}" FontWeight="SemiBold"
+                             Foreground="{DynamicResource DangerBase}" />
+                </StackPanel>
+                <TextBlock Text="{l:T Insights.Warning}" TextWrapping="Wrap" LineHeight="20"
+                           Classes="secondary" FontSize="12.5" />
+              </StackPanel>
+            </Border>
+
+            <Button Classes="accent" Padding="22,11" HorizontalAlignment="Left"
+                    Command="{Binding AnalyseCommand}" Content="{l:T Insights.Analyse}" />
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <Border IsVisible="{Binding IsBusy}" Background="{DynamicResource HeroGradient}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20" Width="420">
+          <TextBlock Classes="title" Text="{l:T Insights.Analyse}" HorizontalAlignment="Center" />
+          <ProgressBar IsIndeterminate="True" Height="3" CornerRadius="2"
+                       Foreground="{DynamicResource AccentBase}"
+                       Background="{DynamicResource SurfaceRaised}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Results -->
+      <Grid IsVisible="{Binding HasRun}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                    IsVisible="{Binding IsEmpty}" MaxWidth="420">
+          <TextBlock Classes="title" Text="{l:T Insights.Empty}" HorizontalAlignment="Center"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+
+        <ScrollViewer IsVisible="{Binding !IsEmpty}">
+          <ItemsControl ItemsSource="{Binding Groups}" Margin="12,10,12,16">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:InsightGroupViewModel">
+                <Border Classes="panel" Margin="0,0,0,8" Padding="0"
+                        Background="{DynamicResource SurfaceRaised}">
+                  <StackPanel>
+
+                    <Button Classes="group-header" Command="{Binding ToggleCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="14,12">
+
+                        <Path Grid.Column="0" Width="8" Height="8" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiary}" VerticalAlignment="Center"
+                              Margin="0,0,12,0"
+                              Data="{Binding IsExpanded, Converter={x:Static views:Converters.Chevron}}" />
+
+                        <StackPanel Grid.Column="1" Spacing="4">
+                          <StackPanel Orientation="Horizontal" Spacing="9">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                            <Border CornerRadius="{DynamicResource RadiusPill}" Padding="8,2"
+                                    Background="{DynamicResource SurfaceOverlay}"
+                                    IsVisible="{Binding HasConfidence}"
+                                    VerticalAlignment="Center">
+                              <TextBlock Text="{Binding ConfidenceLabel}" FontSize="10.5"
+                                         FontWeight="SemiBold"
+                                         Foreground="{Binding ConfidenceBrush}" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Help}" Classes="tertiary" FontSize="11.5"
+                                     TextWrapping="Wrap" MaxWidth="640" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="2" Text="{Binding CountText}" Classes="tertiary numeric"
+                                   FontSize="11.5" VerticalAlignment="Center" Margin="14,0" />
+
+                        <TextBlock Grid.Column="3" Text="{Binding SizeText}" Classes="numeric"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="80" />
+                      </Grid>
+                    </Button>
+
+                    <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}"
+                                  Margin="0,0,0,6">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:InsightItemViewModel">
+                          <Border Background="{DynamicResource SurfaceBase}"
+                                  Margin="14,0,14,4" CornerRadius="6" Padding="12,7"
+                                  ToolTip.Tip="{Binding FullPath}">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                              <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                        VerticalAlignment="Center" Margin="0,0,8,0" />
+                              <Border Grid.Column="1" Width="8" Height="8" CornerRadius="2"
+                                      Background="{Binding Swatch}" VerticalAlignment="Center"
+                                      Margin="0,0,10,0" />
+                              <TextBlock Grid.Column="2" Text="{Binding RelativePath}" FontSize="12"
+                                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="3" Text="{Binding DetailText}"
+                                         Classes="numeric tertiary" FontSize="11.5"
+                                         VerticalAlignment="Center" Margin="12,0" />
+                              <TextBlock Grid.Column="4" Text="{Binding SizeText}"
+                                         Classes="numeric secondary" FontSize="11.5"
+                                         VerticalAlignment="Center" MinWidth="72" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Panel>
+
+    <!-- ================================================ Action bar ================================================ -->
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0"
+            Padding="14,9" IsVisible="{Binding HasRun}">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="ghost" Content="{l:T Common.Clear}" FontSize="12"
+                Padding="10,5" Command="{Binding ClearSelectionCommand}" />
+
+        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}"
+                   Foreground="{DynamicResource AccentBase}" FontSize="11.5"
+                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding SelectedText}" Classes="secondary" FontSize="12"
+                     VerticalAlignment="Center" />
+          <Button Classes="danger" Padding="16,7" Content="{l:T Dup.MoveToTrash}"
+                  Command="{Binding DeleteSelectedCommand}" IsEnabled="{Binding HasSelection}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="Button.group-header">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
+    </Style>
+    <Style Selector="Button.group-header:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+  </UserControl.Styles>
+
+</UserControl>

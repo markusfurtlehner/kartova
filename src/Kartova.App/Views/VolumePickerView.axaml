@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Kartova.App.ViewModels"
+             xmlns:views="using:Kartova.App.Views"
+             xmlns:l="using:Kartova.App.Localization"
+             mc:Ignorable="d"
+             x:Class="Kartova.App.Views.VolumePickerView"
+             x:DataType="vm:MainViewModel">
+
+  <Border Background="{DynamicResource HeroGradient}">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel MaxWidth="1180" Margin="40,36,40,48" Spacing="30">
+
+        <!-- ============================================= Hero heading -->
+        <StackPanel Spacing="9">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <Image Source="/Assets/kartova-128.png" Width="46" Height="46" />
+            <StackPanel VerticalAlignment="Center" Spacing="1">
+              <TextBlock Classes="display" Text="{l:T Volumes.Title}" />
+              <TextBlock Classes="secondary"
+                         Text="{l:T Volumes.Subtitle}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- ================================================== Volumes -->
+        <StackPanel Spacing="13">
+          <TextBlock Classes="caption" Text="{l:T Volumes.Drives}" />
+
+          <ItemsControl ItemsSource="{Binding Volumes}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:VolumeCardViewModel">
+                <Button Classes="volume-card"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).ScanVolumeCommand}"
+                        CommandParameter="{Binding}">
+                  <Grid ColumnDefinitions="Auto,*" Width="326">
+
+                    <!-- Capacity ring with the percentage in the middle -->
+                    <Panel Grid.Column="0" Width="66" Height="66" Margin="0,0,16,0">
+                      <views:CapacityRing Fraction="{Binding UsedFraction}"
+                                          RingBrush="{Binding RingBrush}"
+                                          TrackBrush="{DynamicResource RingTrack}"
+                                          StrokeThickness="6" />
+                      <TextBlock Text="{Binding PercentText}"
+                                 FontSize="12.5" FontWeight="SemiBold"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Panel>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
+                      <TextBlock Text="{Binding Title}" Classes="subtitle"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Subtitle}" Classes="tertiary"
+                                 FontSize="11.5" TextTrimming="CharacterEllipsis" />
+
+                      <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,0">
+                        <TextBlock Text="{Binding FreeText}" Classes="secondary" FontWeight="Medium" />
+                        <TextBlock Text="{l:T Volumes.FreeOf}" Classes="tertiary" />
+                        <TextBlock Text="{Binding TotalText}" Classes="tertiary" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- =================================================== Folder -->
+        <StackPanel Spacing="13">
+          <TextBlock Classes="caption" Text="{l:T Volumes.OrFolder}" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Classes="accent" Command="{Binding BrowseCommand}" Padding="18,10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="🗀" FontSize="14" />
+                <TextBlock Text="{l:T Volumes.ChooseFolders}" />
+              </StackPanel>
+            </Button>
+            <TextBlock Classes="tertiary" VerticalAlignment="Center"
+                       Text="{l:T Volumes.ChooseHint}" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- =================================================== Recent -->
+        <StackPanel Spacing="13" IsVisible="{Binding RecentPaths.Count}">
+          <TextBlock Classes="caption" Text="{l:T Volumes.Recent}" />
+          <ItemsControl ItemsSource="{Binding RecentPaths}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Button Classes="ghost recent-chip"
+                        Content="{Binding}"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).ScanRecentCommand}"
+                        CommandParameter="{Binding}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- =================================================== Status -->
+        <Border Classes="panel" Padding="14,11"
+                Background="{DynamicResource DangerMuted}"
+                BorderBrush="Transparent"
+                IsVisible="{Binding StatusMessage, Converter={x:Static views:Converters.HasText}}">
+          <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource DangerBase}" />
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+
+  <UserControl.Styles>
+    <Style Selector="Button.volume-card">
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaised}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusLarge}" />
+      <Setter Property="Padding" Value="18" />
+      <Setter Property="Margin" Value="0,0,14,14" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.volume-card:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBase}" />
+    </Style>
+
+    <Style Selector="Button.recent-chip">
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaised}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="Margin" Value="0,0,9,9" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </UserControl.Styles>
+
+</UserControl>

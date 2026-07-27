@@ -65,16 +65,16 @@ jobs:
           cd artifacts
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
             # Ship the bundle, not the flat publish directory: Finder will not launch the latter.
-            tar -czf "DirStat-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}-bundle" DirStat.app
+            tar -czf "Kartova-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}-bundle" Kartova.app
           elif [[ "${{ matrix.rid }}" == win-* ]]; then
-            7z a "DirStat-${{ matrix.rid }}.zip" "./${{ matrix.rid }}/*"
+            7z a "Kartova-${{ matrix.rid }}.zip" "./${{ matrix.rid }}/*"
           else
-            tar -czf "DirStat-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}" .
+            tar -czf "Kartova-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}" .
           fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DirStat-${{ matrix.rid }}
+          name: Kartova-${{ matrix.rid }}
           path: |
             artifacts/*.zip
             artifacts/*.tar.gz

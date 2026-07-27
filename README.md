@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src/DirStat.App/Assets/dirstat-128.png" width="88" alt="DirStat">
+<img src="src/Kartova.App/Assets/kartova-128.png" width="88" alt="Kartova">
 
-# DirStat
+# Kartova
 
 **A disk usage analyser for Windows, macOS and Linux.**
 One self-contained file per platform. Nothing to install, no runtime to fetch.
@@ -13,7 +13,7 @@ One self-contained file per platform. Nothing to install, no runtime to fetch.
 
 ---
 
-DirStat maps every byte on a volume to a picture you can click through, so the thing eating
+Kartova maps every byte on a volume to a picture you can click through, so the thing eating
 your disk is visible at a glance rather than after a hunt.
 
 It has the capabilities of WinDirStat, QDirStat and SpaceSniffer — and adds the things they
@@ -31,11 +31,11 @@ to install.
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows | `DirStat.exe` | x64 and arm64 |
-| macOS | `DirStat.app` | x64 and arm64. Unsigned — first launch needs right-click → Open |
-| Linux | `DirStat` | x64 and arm64. Needs `libX11`, `libICE`, `libSM`, `fontconfig` — present on every desktop install |
+| Windows | `Kartova.exe` | x64 and arm64 |
+| macOS | `Kartova.app` | x64 and arm64. Unsigned — first launch needs right-click → Open |
+| Linux | `Kartova` | x64 and arm64. Needs `libX11`, `libICE`, `libSM`, `fontconfig` — present on every desktop install |
 
-On Linux DirStat needs a desktop session; if `DISPLAY` and `WAYLAND_DISPLAY` are both unset it
+On Linux Kartova needs a desktop session; if `DISPLAY` and `WAYLAND_DISPLAY` are both unset it
 says so and exits rather than sitting there showing nothing.
 
 ---
@@ -118,7 +118,7 @@ Every category says what it is and how safe it is to remove:
 | **Usually disposable** | Almost certainly safe, but worth a glance. |
 | **Check carefully** | Often large and often unwanted, but may be deliberate. |
 
-DirStat identifies these by name and shape, not by asking the program that made them — so it
+Kartova identifies these by name and shape, not by asking the program that made them — so it
 classifies and explains, and the judgement stays with you. Nothing in the list is a document,
 a download, or anything you made by hand. There is no one-click purge, on purpose.
 
@@ -159,15 +159,15 @@ Dark and light themes.
 
 ## Command line
 
-The scanner and every analysis are UI-free, so DirStat runs headless on a build agent or over
+The scanner and every analysis are UI-free, so Kartova runs headless on a build agent or over
 SSH with no display at all.
 
 ```sh
-dirstat --scan /home/me --duplicates          # scan and report duplicates
-dirstat --scan C:\ --snapshot --quiet         # store a snapshot for later
-dirstat --compare monday.dirstat --scan C:\   # what changed since Monday
-dirstat --scan . --export report.json         # JSON, or CSV for any other extension
-dirstat --list-snapshots                      # what has been stored
+kartova --scan /home/me --duplicates          # scan and report duplicates
+kartova --scan C:\ --snapshot --quiet         # store a snapshot for later
+kartova --compare monday.kartova --scan C:\   # what changed since Monday
+kartova --scan . --export report.json         # JSON, or CSV for any other extension
+kartova --list-snapshots                      # what has been stored
 ```
 
 ```
@@ -190,7 +190,7 @@ The established tools are functionally excellent and visually stuck in 2005. The
 sluggish on large volumes, because they draw the treemap as retained visual elements and walk
 the tree on every pointer move.
 
-DirStat keeps their capabilities and changes the engine underneath:
+Kartova keeps their capabilities and changes the engine underneath:
 
 **Scanning** runs across a lock-free work stack, enumerating with a struct projection that
 allocates nothing per entry beyond the node itself.
@@ -233,9 +233,9 @@ A few decisions that shape the rest:
 ## Build
 
 ```
-src/DirStat.Core        scanning, layout, rasterization, duplicates, insights, snapshots
-src/DirStat.App         Avalonia views, view models, theming, shell integration, CLI
-tests/DirStat.Core.Tests
+src/Kartova.Core        scanning, layout, rasterization, duplicates, insights, snapshots
+src/Kartova.App         Avalonia views, view models, theming, shell integration, CLI
+tests/Kartova.Core.Tests
 ```
 
 `Core` has no UI dependency and carries the whole test suite.
@@ -243,7 +243,7 @@ tests/DirStat.Core.Tests
 ```sh
 dotnet build                              # build everything
 dotnet test                               # 181 tests
-dotnet run --project src/DirStat.App      # run it
+dotnet run --project src/Kartova.App      # run it
 
 ./build/publish.sh                        # self-contained, host platform
 ./build/publish.sh all                    # all six platforms → artifacts/
@@ -266,9 +266,12 @@ surfaces down the tree.
 
 Made by **Markus Furtlehner**. MIT — see [LICENSE](LICENSE). Free to use, change and share.
 
+The name is from cartography — *Karte*, *carte*, *carta*, *chart*. Kartova draws two kinds of
+map of the same disk, and you read whichever one answers your question faster.
+
 The icon is generated, not drawn: `python build/make_icons.py` renders it from the app's own
 accent ramp using nothing but the Python standard library, so there is no third-party artwork
 anywhere in the tree.
 
-DirStat is an independent implementation. It is not affiliated with WinDirStat, QDirStat or
+Kartova is an independent implementation. It is not affiliated with WinDirStat, QDirStat or
 SpaceSniffer, though it owes all three the debt of a good idea.

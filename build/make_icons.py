@@ -1,4 +1,4 @@
-"""Generate DirStat application icons with no third-party dependencies.
+"""Generate Kartova application icons with no third-party dependencies.
 
 Produces a treemap glyph: nested rounded blocks on a deep slate field, in the
 app's accent ramp. Writes PNGs at several sizes plus a multi-size .ico that
@@ -9,7 +9,7 @@ import struct
 import zlib
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "src" / "DirStat.App" / "Assets"
+OUT = Path(__file__).resolve().parent.parent / "src" / "Kartova.App" / "Assets"
 
 # Accent ramp, matching the UI theme.
 BG_TOP = (0x12, 0x16, 0x22)
@@ -136,11 +136,11 @@ def main():
         data = png_bytes(render(s), s)
         pngs.append((s, data))
         if s in (32, 128, 256):
-            (OUT / f"dirstat-{s}.png").write_bytes(data)
+            (OUT / f"kartova-{s}.png").write_bytes(data)
         print(f"  rendered {s}x{s}")
 
-    (OUT / "dirstat.ico").write_bytes(ico_bytes(pngs))
-    (OUT / "dirstat.png").write_bytes(dict(pngs)[256])
+    (OUT / "kartova.ico").write_bytes(ico_bytes(pngs))
+    (OUT / "kartova.png").write_bytes(dict(pngs)[256])
     print(f"wrote icons to {OUT}")
 
 

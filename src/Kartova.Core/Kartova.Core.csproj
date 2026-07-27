@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Kartova.Core</RootNamespace>
+    <AssemblyName>Kartova.Core</AssemblyName>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kartova.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- XxHash128 for duplicate detection. First-party, MIT, and roughly an order of
+         magnitude faster than the built-in cryptographic hashes, which matters when the
+         job is reading gigabytes off disk. -->
+    <PackageReference Include="System.IO.Hashing" Version="9.0.18" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Publishes DirStat as a self-contained application for one or more platforms.
+  Publishes Kartova as a self-contained application for one or more platforms.
 
 .DESCRIPTION
   Each build embeds the .NET runtime, so the result runs on a machine with nothing
@@ -37,29 +37,29 @@ function New-AppBundle {
   param([string]$Rid, [string]$PublishDir, [string]$Version, [string]$Repo)
 
   # Finder only launches a bundle, so the flat publish output is rehomed into one.
-  $bundle = Join-Path (Split-Path $PublishDir -Parent) "$Rid-bundle/DirStat.app"
+  $bundle = Join-Path (Split-Path $PublishDir -Parent) "$Rid-bundle/Kartova.app"
   $macos = Join-Path $bundle 'Contents/MacOS'
   $resources = Join-Path $bundle 'Contents/Resources'
 
   New-Item -ItemType Directory -Force -Path $macos, $resources | Out-Null
   Copy-Item (Join-Path $PublishDir '*') $macos -Recurse -Force
 
-  $icon = Join-Path $Repo 'src/DirStat.App/Assets/dirstat.png'
-  if (Test-Path $icon) { Copy-Item $icon (Join-Path $resources 'dirstat.png') -Force }
+  $icon = Join-Path $Repo 'src/Kartova.App/Assets/kartova.png'
+  if (Test-Path $icon) { Copy-Item $icon (Join-Path $resources 'kartova.png') -Force }
 
   $plist = @"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>DirStat</string>
-  <key>CFBundleDisplayName</key><string>DirStat</string>
-  <key>CFBundleIdentifier</key><string>org.dirstat.app</string>
+  <key>CFBundleName</key><string>Kartova</string>
+  <key>CFBundleDisplayName</key><string>Kartova</string>
+  <key>CFBundleIdentifier</key><string>org.kartova.app</string>
   <key>CFBundleVersion</key><string>$Version</string>
   <key>CFBundleShortVersionString</key><string>$Version</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleExecutable</key><string>DirStat</string>
-  <key>CFBundleIconFile</key><string>dirstat</string>
+  <key>CFBundleExecutable</key><string>Kartova</string>
+  <key>CFBundleIconFile</key><string>kartova</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSRequiresAquaSystemAppearance</key><false/>
@@ -68,13 +68,13 @@ function New-AppBundle {
 "@
 
   Set-Content -Path (Join-Path $bundle 'Contents/Info.plist') -Value $plist -Encoding utf8
-  Write-Host '    bundled DirStat.app'
+  Write-Host '    bundled Kartova.app'
 }
 
 # ------------------------------------------------------------------------ main
 
 $repo = Split-Path -Parent $PSScriptRoot
-$project = Join-Path $repo 'src/DirStat.App/DirStat.App.csproj'
+$project = Join-Path $repo 'src/Kartova.App/Kartova.App.csproj'
 if (-not $OutputRoot) { $OutputRoot = Join-Path $repo 'artifacts' }
 
 $targets = switch ($Runtime) {
@@ -86,7 +86,7 @@ $targets = switch ($Runtime) {
 $props = Join-Path $repo 'Directory.Build.props'
 $version = (Select-String -Path $props -Pattern '<Version>(.*?)</Version>').Matches[0].Groups[1].Value
 
-Write-Host "DirStat $version" -ForegroundColor Cyan
+Write-Host "Kartova $version" -ForegroundColor Cyan
 Write-Host "Publishing: $($targets -join ', ')`n"
 
 foreach ($rid in $targets) {
