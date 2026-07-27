@@ -10,4 +10,11 @@
     <InternalsVisibleTo Include="DirStat.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- XxHash128 for duplicate detection. First-party, MIT, and roughly an order of
+         magnitude faster than the built-in cryptographic hashes, which matters when the
+         job is reading gigabytes off disk. -->
+    <PackageReference Include="System.IO.Hashing" Version="9.0.18" />
+  </ItemGroup>
+
 </Project>
