@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DirStat.App.ViewModels"
              xmlns:views="using:DirStat.App.Views"
+             xmlns:l="using:DirStat.App.Localization"
              mc:Ignorable="d"
              x:Class="DirStat.App.Views.DuplicatesView"
              x:DataType="vm:MainViewModel">
@@ -22,12 +23,12 @@
 
         <Button Grid.Column="0" Classes="ghost" Padding="9,6"
                 Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BackToResultsCommand}"
-                ToolTip.Tip="Back to the scan">
+                ToolTip.Tip="{l:T Results.BackToDrives}">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <Path Data="{StaticResource IconBack2}" Stroke="{DynamicResource TextSecondary}"
                   StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
                   Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
-            <TextBlock Text="Back" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T Common.Back}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
 
@@ -46,11 +47,11 @@
         </StackPanel>
 
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-          <Button Classes="ghost" Content="Expand all" FontSize="12" Padding="9,5"
+          <Button Classes="ghost" Content="{l:T Dup.ExpandAll}" FontSize="12" Padding="9,5"
                   Command="{Binding ExpandAllCommand}" IsVisible="{Binding HasSearched}" />
-          <Button Classes="ghost" Content="Collapse" FontSize="12" Padding="9,5"
+          <Button Classes="ghost" Content="{l:T Dup.Collapse}" FontSize="12" Padding="9,5"
                   Command="{Binding CollapseAllCommand}" IsVisible="{Binding HasSearched}" />
-          <Button Classes="accent" Content="Search again" Padding="14,7"
+          <Button Classes="accent" Content="{l:T Dup.SearchAgain}" Padding="14,7"
                   Command="{Binding SearchCommand}"
                   IsVisible="{Binding HasSearched}"
                   IsEnabled="{Binding !IsSearching}" />
@@ -67,15 +68,15 @@
           <StackPanel MaxWidth="680" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="26">
 
             <StackPanel Spacing="10">
-              <TextBlock Classes="display" Text="Find what you have twice" />
+              <TextBlock Classes="display" Text="{l:T Dup.Title}" />
               <TextBlock Classes="secondary" TextWrapping="Wrap" LineHeight="21"
-                         Text="DirStat compares contents, not names. Two files match only when every byte does, and two folders match only when their entire trees do." />
+                         Text="{l:T Dup.Subtitle}" />
             </StackPanel>
 
             <Border Classes="card" Padding="22">
               <StackPanel Spacing="18">
                 <StackPanel Spacing="7">
-                  <TextBlock Classes="caption" Text="IGNORE FILES SMALLER THAN" />
+                  <TextBlock Classes="caption" Text="{l:T Dup.MinSize}" />
                   <StackPanel Orientation="Horizontal" Spacing="12">
                     <Slider Minimum="1" Maximum="1024" Width="320"
                             Value="{Binding MinimumSizeKb}" />
@@ -83,18 +84,18 @@
                                Text="{Binding MinimumSizeKb, StringFormat=' {0} KiB'}" />
                   </StackPanel>
                   <TextBlock Classes="tertiary" FontSize="11.5"
-                             Text="Small files duplicate constantly and reclaim almost nothing." />
+                             Text="{l:T Dup.MinSizeHint}" />
                 </StackPanel>
 
                 <CheckBox IsChecked="{Binding VerifyByteForByte}"
-                          Content="Verify byte for byte after matching" />
+                          Content="{l:T Dup.Verify}" />
                 <TextBlock Classes="tertiary" FontSize="11.5" Margin="26,-12,0,0" TextWrapping="Wrap"
-                           Text="Reads every confirmed duplicate a second time. The 128-bit content hash already makes a false match vanishingly unlikely." />
+                           Text="{l:T Dup.VerifyHint}" />
               </StackPanel>
             </Border>
 
             <Button Classes="accent" Padding="22,11" HorizontalAlignment="Left"
-                    Command="{Binding SearchCommand}" Content="Find duplicates" />
+                    Command="{Binding SearchCommand}" Content="{l:T Dup.Find}" />
 
           </StackPanel>
         </Border>
@@ -118,7 +119,7 @@
           <TextBlock Classes="tertiary mono" FontSize="11" TextTrimming="CharacterEllipsis"
                      HorizontalAlignment="Center" Text="{Binding CurrentPath}" />
 
-          <Button Content="Cancel" HorizontalAlignment="Center" Padding="20,8"
+          <Button Content="{l:T Common.Cancel}" HorizontalAlignment="Center" Padding="20,8"
                   Command="{Binding CancelSearchCommand}" />
         </StackPanel>
       </Border>
@@ -135,7 +136,7 @@
         <!-- Nothing found -->
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Spacing="10" IsVisible="{Binding IsEmpty}" MaxWidth="440">
-          <TextBlock Classes="title" Text="Nothing duplicated here" HorizontalAlignment="Center" />
+          <TextBlock Classes="title" Text="{l:T Dup.EmptyTitle}" HorizontalAlignment="Center" />
           <TextBlock Classes="tertiary" Text="{Binding EmptyMessage}"
                      TextWrapping="Wrap" TextAlignment="Center" />
         </StackPanel>
@@ -175,7 +176,7 @@
                           <TextBlock Text="{Binding WastedText}" Classes="numeric"
                                      FontWeight="SemiBold"
                                      Foreground="{DynamicResource WarningBase}" />
-                          <TextBlock Text="recoverable" Classes="tertiary numeric" FontSize="11" />
+                          <TextBlock Text="{l:T Dup.Recoverable}" Classes="tertiary numeric" FontSize="11" />
                         </StackPanel>
 
                         <TextBlock Grid.Column="4" Text="{Binding SelectedText}"
@@ -235,17 +236,17 @@
       <Grid ColumnDefinitions="Auto,*,Auto">
 
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-          <TextBlock Text="Keep" Classes="tertiary" VerticalAlignment="Center" FontSize="12" />
-          <Button Classes="ghost" Content="Oldest" FontSize="12" Padding="10,5"
+          <TextBlock Text="{l:T Dup.Keep}" Classes="tertiary" VerticalAlignment="Center" FontSize="12" />
+          <Button Classes="ghost" Content="{l:T Dup.Oldest}" FontSize="12" Padding="10,5"
                   Command="{Binding KeepOldestCommand}"
-                  ToolTip.Tip="Tick every copy except the oldest in each group" />
-          <Button Classes="ghost" Content="Newest" FontSize="12" Padding="10,5"
+                  ToolTip.Tip="{l:T Dup.KeepOldestTip}" />
+          <Button Classes="ghost" Content="{l:T Dup.Newest}" FontSize="12" Padding="10,5"
                   Command="{Binding KeepNewestCommand}"
-                  ToolTip.Tip="Tick every copy except the newest in each group" />
-          <Button Classes="ghost" Content="Shortest path" FontSize="12" Padding="10,5"
+                  ToolTip.Tip="{l:T Dup.KeepNewestTip}" />
+          <Button Classes="ghost" Content="{l:T Dup.ShortestPath}" FontSize="12" Padding="10,5"
                   Command="{Binding KeepShortestPathCommand}"
-                  ToolTip.Tip="Tick every copy except the one nearest the root" />
-          <Button Classes="ghost" Content="Clear" FontSize="12" Padding="10,5"
+                  ToolTip.Tip="{l:T Dup.KeepShortestTip}" />
+          <Button Classes="ghost" Content="{l:T Common.Clear}" FontSize="12" Padding="10,5"
                   Command="{Binding ClearSelectionCommand}" />
         </StackPanel>
 
@@ -256,7 +257,7 @@
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
           <TextBlock Text="{Binding SelectedText}" Classes="secondary" FontSize="12"
                      VerticalAlignment="Center" />
-          <Button Classes="danger" Padding="16,7" Content="Move selected to trash"
+          <Button Classes="danger" Padding="16,7" Content="{l:T Dup.MoveToTrash}"
                   Command="{Binding DeleteSelectedCommand}"
                   IsEnabled="{Binding HasSelection}" />
         </StackPanel>

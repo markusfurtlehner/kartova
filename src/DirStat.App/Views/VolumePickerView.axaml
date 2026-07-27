@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DirStat.App.ViewModels"
              xmlns:views="using:DirStat.App.Views"
+             xmlns:l="using:DirStat.App.Localization"
              mc:Ignorable="d"
              x:Class="DirStat.App.Views.VolumePickerView"
              x:DataType="vm:MainViewModel">
@@ -17,16 +18,16 @@
           <StackPanel Orientation="Horizontal" Spacing="14">
             <Image Source="/Assets/dirstat-128.png" Width="46" Height="46" />
             <StackPanel VerticalAlignment="Center" Spacing="1">
-              <TextBlock Classes="display" Text="Where did your space go?" />
+              <TextBlock Classes="display" Text="{l:T Volumes.Title}" />
               <TextBlock Classes="secondary"
-                         Text="Pick a drive or folder. DirStat maps every byte and shows you what is worth deleting." />
+                         Text="{l:T Volumes.Subtitle}" />
             </StackPanel>
           </StackPanel>
         </StackPanel>
 
         <!-- ================================================== Volumes -->
         <StackPanel Spacing="13">
-          <TextBlock Classes="caption" Text="DRIVES" />
+          <TextBlock Classes="caption" Text="{l:T Volumes.Drives}" />
 
           <ItemsControl ItemsSource="{Binding Volumes}">
             <ItemsControl.ItemsPanel>
@@ -61,7 +62,7 @@
 
                       <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,0">
                         <TextBlock Text="{Binding FreeText}" Classes="secondary" FontWeight="Medium" />
-                        <TextBlock Text="free of" Classes="tertiary" />
+                        <TextBlock Text="{l:T Volumes.FreeOf}" Classes="tertiary" />
                         <TextBlock Text="{Binding TotalText}" Classes="tertiary" />
                       </StackPanel>
                     </StackPanel>
@@ -74,22 +75,22 @@
 
         <!-- =================================================== Folder -->
         <StackPanel Spacing="13">
-          <TextBlock Classes="caption" Text="OR A SPECIFIC FOLDER" />
+          <TextBlock Classes="caption" Text="{l:T Volumes.OrFolder}" />
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Button Classes="accent" Command="{Binding BrowseCommand}" Padding="18,10">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="🗀" FontSize="14" />
-                <TextBlock Text="Choose folders…" />
+                <TextBlock Text="{l:T Volumes.ChooseFolders}" />
               </StackPanel>
             </Button>
             <TextBlock Classes="tertiary" VerticalAlignment="Center"
-                       Text="You can select more than one — they are scanned together." />
+                       Text="{l:T Volumes.ChooseHint}" />
           </StackPanel>
         </StackPanel>
 
         <!-- =================================================== Recent -->
         <StackPanel Spacing="13" IsVisible="{Binding RecentPaths.Count}">
-          <TextBlock Classes="caption" Text="RECENT" />
+          <TextBlock Classes="caption" Text="{l:T Volumes.Recent}" />
           <ItemsControl ItemsSource="{Binding RecentPaths}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>

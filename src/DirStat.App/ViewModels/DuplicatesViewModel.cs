@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DirStat.App.Localization;
 using DirStat.App.Services;
 using DirStat.Core.Duplicates;
 using DirStat.Core.Files;
@@ -75,7 +76,7 @@ public sealed partial class DuplicatesViewModel : ObservableObject
         StatusMessage = string.Empty;
         Groups.Clear();
         ProgressFraction = 0;
-        PhaseText = "Preparing";
+        PhaseText = Loc.T("Dup.Phase.Grouping");
         ProgressDetailText = string.Empty;
 
         var options = new DuplicateOptions
@@ -95,11 +96,11 @@ public sealed partial class DuplicatesViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Search cancelled.";
+            StatusMessage = Loc.T("Dup.Cancelled");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            StatusMessage = $"Search failed: {e.Message}";
+            StatusMessage = Loc.Format("Status.ScanFailed", e.Message);
         }
         finally
         {
@@ -114,12 +115,12 @@ public sealed partial class DuplicatesViewModel : ObservableObject
     {
         PhaseText = progress.Phase switch
         {
-            DuplicatePhase.Grouping => "Grouping by size",
-            DuplicatePhase.Screening => "Screening candidates",
-            DuplicatePhase.Hashing => "Comparing contents",
-            DuplicatePhase.MatchingFolders => "Matching folders",
-            DuplicatePhase.Verifying => "Verifying byte for byte",
-            _ => "Finishing",
+            DuplicatePhase.Grouping => Loc.T("Dup.Phase.Grouping"),
+            DuplicatePhase.Screening => Loc.T("Dup.Phase.Screening"),
+            DuplicatePhase.Hashing => Loc.T("Dup.Phase.Hashing"),
+            DuplicatePhase.MatchingFolders => Loc.T("Dup.Phase.Folders"),
+            DuplicatePhase.Verifying => Loc.T("Dup.Phase.Verifying"),
+            _ => Loc.T("Dup.Phase.Finishing"),
         };
 
         ProgressFraction = progress.Fraction;
@@ -128,9 +129,9 @@ public sealed partial class DuplicatesViewModel : ObservableObject
 
         var parts = new List<string>();
         if (progress.CandidateFiles > 0)
-            parts.Add($"{SizeFormatter.FormatCount(progress.CandidateFiles)} candidates");
+            parts.Add(Loc.Format("Dup.Candidates", SizeFormatter.FormatCount(progress.CandidateFiles)));
         if (progress.BytesHashed > 0)
-            parts.Add($"{SizeFormatter.Format(progress.BytesHashed)} read");
+            parts.Add(Loc.Format("Dup.BytesRead", SizeFormatter.Format(progress.BytesHashed)));
         if (progress.BytesPerSecond > 0)
             parts.Add(SizeFormatter.FormatRate(progress.BytesPerSecond));
 
@@ -141,17 +142,19 @@ public sealed partial class DuplicatesViewModel : ObservableObject
 
     private void Populate()
     {
-        FileTabText = $"Files  ({_result.FileGroups.Count})";
-        FolderTabText = $"Folders  ({_result.FolderGroups.Count})";
+        FileTabText = Loc.Format("Dup.FilesTab", _result.FileGroups.Count);
+        FolderTabText = Loc.Format("Dup.FoldersTab", _result.FolderGroups.Count);
 
         var reclaimable = _result.WastedInFiles + _result.WastedInFolders;
         SummaryText = reclaimable > 0
-            ? $"{SizeFormatter.Format(reclaimable)} recoverable  ·  " +
-              $"{_result.FileGroups.Count + _result.FolderGroups.Count} groups  ·  " +
-              $"{SizeFormatter.Format(_result.BytesHashed)} read in {SizeFormatter.FormatDuration(_result.Duration)}"
-            : $"No duplicates found  ·  searched in {SizeFormatter.FormatDuration(_result.Duration)}";
+            ? Loc.Format("Dup.Summary",
+                SizeFormatter.Format(reclaimable),
+                _result.FileGroups.Count + _result.FolderGroups.Count,
+                SizeFormatter.Format(_result.BytesHashed),
+                SizeFormatter.FormatDuration(_result.Duration))
+            : Loc.Format("Dup.NoneFound", SizeFormatter.FormatDuration(_result.Duration));
 
-        if (_result.WasCancelled) StatusMessage = "Search cancelled — showing partial results.";
+        if (_result.WasCancelled) StatusMessage = Loc.T("Dup.Cancelled");
 
         ShowCurrentTab();
     }
@@ -172,8 +175,8 @@ public sealed partial class DuplicatesViewModel : ObservableObject
 
         IsEmpty = Groups.Count == 0;
         EmptyMessage = ShowFolders
-            ? "No duplicate folders. Folders match only when their entire contents do."
-            : "No duplicate files above the minimum size.";
+            ? Loc.T("Dup.EmptyFolders")
+            : Loc.T("Dup.EmptyFiles");
 
         UpdateSelectionTotals();
     }
@@ -193,8 +196,8 @@ public sealed partial class DuplicatesViewModel : ObservableObject
 
         HasSelection = count > 0;
         SelectedText = count == 0
-            ? "Nothing selected"
-            : $"{SizeFormatter.FormatCount(count)} selected  ·  {SizeFormatter.Format(bytes)} to recover";
+            ? Loc.T("Dup.NothingSelected")
+            : Loc.Format("Dup.Selected", SizeFormatter.FormatCount(count), SizeFormatter.Format(bytes));
     }
 
     [RelayCommand]
@@ -247,13 +250,12 @@ public sealed partial class DuplicatesViewModel : ObservableObject
         var allFolders = doomed.All(c => c.IsFolder);
 
         var what = allFolders
-            ? Plural(doomed.Count, "folder", "folders")
-            : Plural(doomed.Count, "item", "items");
+            ? Plural(doomed.Count, "Dup.Folder", "Dup.FoldersPlural")
+            : Plural(doomed.Count, "Dup.Item", "Dup.Items");
 
         var confirmed = ConfirmAsync is null || await ConfirmAsync(
-            "Move duplicates to trash?",
-            $"{what} will be moved to the trash, recovering {SizeFormatter.Format(bytes)}.\n\n" +
-            "One copy of every group is always kept.");
+            Loc.T("Dup.ConfirmTitle"),
+            Loc.Format("Dup.ConfirmBody", what, SizeFormatter.Format(bytes)));
 
         if (!confirmed) return;
 
@@ -271,8 +273,8 @@ public sealed partial class DuplicatesViewModel : ObservableObject
             }
 
             StatusMessage = failures == 0
-                ? $"Moved {Plural(removed.Count, "item", "items")} to trash, recovering {SizeFormatter.Format(bytes)}."
-                : $"Moved {Plural(removed.Count, "item", "items")}; {failures} could not be removed.";
+                ? Loc.Format("Dup.Moved", Plural(removed.Count, "Dup.Item", "Dup.Items"), SizeFormatter.Format(bytes))
+                : Loc.Format("Dup.MovedPartial", Plural(removed.Count, "Dup.Item", "Dup.Items"), failures);
 
             // Drop the removed copies, and any group that is no longer a duplicate.
             foreach (var group in Groups.ToList())
@@ -305,18 +307,15 @@ public sealed partial class DuplicatesViewModel : ObservableObject
     /// </remarks>
     private void MarkResultsStale()
     {
-        var tabLabel = ShowFolders ? "Folders" : "Files";
-        var other = ShowFolders ? "Files" : "Folders";
+        FileTabText = ShowFolders ? Loc.T("Common.Files") : Loc.Format("Dup.FilesTab", Groups.Count);
+        FolderTabText = ShowFolders ? Loc.Format("Dup.FoldersTab", Groups.Count) : Loc.T("Common.Folders");
 
-        FileTabText = ShowFolders ? other : $"{tabLabel}  ({Groups.Count})";
-        FolderTabText = ShowFolders ? $"{tabLabel}  ({Groups.Count})" : other;
-
-        SummaryText = "Totals are out of date after removing copies — search again to refresh.";
+        SummaryText = Loc.T("Dup.StaleTotals");
     }
 
     /// <summary>Formats a count with the right noun. "1 folders" reads like a bug.</summary>
-    private static string Plural(int count, string singular, string plural) =>
-        $"{SizeFormatter.FormatCount(count)} {(count == 1 ? singular : plural)}";
+    private static string Plural(int count, string singularKey, string pluralKey) =>
+        $"{SizeFormatter.FormatCount(count)} {Loc.T(count == 1 ? singularKey : pluralKey)}";
 
     public void Reset()
     {
@@ -328,8 +327,8 @@ public sealed partial class DuplicatesViewModel : ObservableObject
         IsEmpty = false;
         StatusMessage = string.Empty;
         SummaryText = string.Empty;
-        FileTabText = "Files";
-        FolderTabText = "Folders";
+        FileTabText = Loc.T("Common.Files");
+        FolderTabText = Loc.T("Common.Folders");
         UpdateSelectionTotals();
     }
 }

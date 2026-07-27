@@ -17,6 +17,13 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var settings = SettingsService.Load();
+
+            // Follow the operating system on first run rather than assuming English.
+            Localization.Loc.Current.Language =
+                Enum.TryParse<Localization.AppLanguage>(settings.Language, out var saved)
+                    ? saved
+                    : Localization.Loc.DetectSystemLanguage();
+
             RequestedThemeVariant = settings.Theme switch
             {
                 AppTheme.Light => ThemeVariant.Light,

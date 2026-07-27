@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DirStat.App.ViewModels"
              xmlns:views="using:DirStat.App.Views"
+             xmlns:l="using:DirStat.App.Localization"
              mc:Ignorable="d"
              x:Class="DirStat.App.Views.ResultsView"
              x:DataType="vm:MainViewModel">
@@ -29,12 +30,12 @@
 
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <Button Classes="ghost" Command="{Binding BackToVolumesCommand}"
-                  ToolTip.Tip="Back to drives" Padding="9,6">
+                  ToolTip.Tip="{l:T Results.BackToDrives}" Padding="9,6">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Path Data="{StaticResource IconBack}" Stroke="{DynamicResource TextSecondary}"
                     StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
                     Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
-              <TextBlock Text="Drives" VerticalAlignment="Center" />
+              <TextBlock Text="{l:T Results.Drives}" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
@@ -66,8 +67,8 @@
         <Grid Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" Margin="16,0"
               ColumnDefinitions="*,Auto">
           <TextBox Grid.Column="0" x:Name="FilterBox" Text="{Binding FilterText}"
-                   Watermark="Filter: try  *.mp4  &gt;100mb  after:2025-01-01"
-                   ToolTip.Tip="Combine terms: plain text matches names, *.ext matches types,&#10;&gt;100mb and &lt;1gb bound size, after: and before: bound dates." />
+                   Watermark="{l:T Results.FilterWatermark}"
+                   ToolTip.Tip="{l:T Results.FilterTooltip}" />
           <TextBlock Grid.Column="1" Text="{Binding FilterSummary}" Classes="tertiary"
                      FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"
                      IsVisible="{Binding IsFiltered}" />
@@ -75,29 +76,29 @@
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
           <Button Classes="ghost" Padding="11,6" Command="{Binding ShowDuplicatesCommand}"
-                  ToolTip.Tip="Find files and folders you have more than one copy of">
+                  ToolTip.Tip="{l:T Results.DuplicatesTooltip}">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Path Data="{StaticResource IconDuplicates}" Stroke="{DynamicResource TextSecondary}"
                     StrokeThickness="1.5" StrokeJoin="Round"
                     Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
-              <TextBlock Text="Duplicates" VerticalAlignment="Center" />
+              <TextBlock Text="{l:T Results.Duplicates}" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
           <Border Width="1" Height="20" Margin="3,0" Background="{DynamicResource BorderSubtle}" />
 
-          <Button Classes="ghost icon" Command="{Binding ZoomOutCommand}" ToolTip.Tip="Zoom out one level">
+          <Button Classes="ghost icon" Command="{Binding ZoomOutCommand}" ToolTip.Tip="{l:T Results.ZoomOut}">
             <Path Data="{StaticResource IconUp}" Stroke="{DynamicResource TextSecondary}"
                   StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
                   Width="16" Height="16" Stretch="None" />
           </Button>
           <Button Classes="ghost icon" Command="{Binding RefreshSelectedCommand}"
-                  ToolTip.Tip="Rescan the selected folder (F5)">
+                  ToolTip.Tip="{l:T Results.Rescan}">
             <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource TextSecondary}"
                   StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
                   Width="16" Height="16" Stretch="None" />
           </Button>
-          <Button Classes="ghost icon" Command="{Binding ToggleSettingsCommand}" ToolTip.Tip="Options">
+          <Button Classes="ghost icon" Command="{Binding ToggleSettingsCommand}" ToolTip.Tip="{l:T Results.Options}">
             <Path Data="{StaticResource IconOptions}" Stroke="{DynamicResource TextSecondary}"
                   StrokeThickness="1.6" StrokeLineCap="Round"
                   Width="16" Height="16" Stretch="None" />
@@ -117,7 +118,7 @@
       <Border Grid.Column="0" Background="{DynamicResource SurfaceBase}">
         <Grid RowDefinitions="Auto,Auto,*">
 
-          <TextBlock Grid.Row="0" Classes="caption" Text="FOLDERS" Margin="14,11,0,7" />
+          <TextBlock Grid.Row="0" Classes="caption" Text="{l:T Results.Folders}" Margin="14,11,0,7" />
 
           <!-- Sortable headers. Column widths mirror the row template exactly, and the
                right margin reserves the scrollbar gutter so headers stay above their data. -->
@@ -126,7 +127,7 @@
                     HorizontalContentAlignment="Left" Click="OnSortByName" />
             <Button Grid.Column="1" Classes="ghost col-header" Content="{Binding Tree.SizeHeader}"
                     HorizontalContentAlignment="Right" Click="OnSortBySize" />
-            <TextBlock Grid.Column="2" Classes="caption" Text="SHARE"
+            <TextBlock Grid.Column="2" Classes="caption" Text="{l:T Common.Share}"
                        VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
             <Button Grid.Column="3" Classes="ghost col-header" Content="{Binding Tree.ItemsHeader}"
                     HorizontalContentAlignment="Right" Click="OnSortByItems" />
@@ -205,10 +206,10 @@
       <Border Grid.Column="2" Background="{DynamicResource SurfaceSunken}">
         <Grid RowDefinitions="Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="14,11,14,7">
-            <TextBlock Grid.Column="0" Classes="caption" Text="TREEMAP" />
+            <TextBlock Grid.Column="0" Classes="caption" Text="{l:T Results.Treemap}" />
             <TextBlock Grid.Column="1" Classes="tertiary" FontSize="11"
                        HorizontalAlignment="Right"
-                       Text="click to select  ·  double-click to zoom  ·  arrows to walk" />
+                       Text="{l:T Results.ChartHint}" />
           </Grid>
 
           <views:TreemapControl Grid.Row="1" x:Name="Treemap"
@@ -231,10 +232,10 @@
       <Border Grid.Column="4" Background="{DynamicResource SurfaceBase}">
         <Grid RowDefinitions="Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="14,11,14,7">
-            <TextBlock Grid.Column="0" Classes="caption" Text="FILE TYPES" />
+            <TextBlock Grid.Column="0" Classes="caption" Text="{l:T Results.FileTypes}" />
             <TextBlock Grid.Column="1" Classes="tertiary" FontSize="10.5"
                        HorizontalAlignment="Right" VerticalAlignment="Center"
-                       Text="click to isolate" />
+                       Text="{l:T Results.ClickToIsolate}" />
           </Grid>
 
           <ListBox Grid.Row="1" ItemsSource="{Binding Extensions}"
@@ -285,7 +286,7 @@
           <TextBlock Text="{Binding SummaryText}" Classes="tertiary" FontSize="11.5" />
           <TextBlock Text="{Binding DeniedText}" Foreground="{DynamicResource WarningBase}"
                      FontSize="11.5" IsVisible="{Binding HasDenied}"
-                     ToolTip.Tip="Some folders require elevated rights. Their contents show as unknown space." />
+                     ToolTip.Tip="{l:T Tooltip.Denied}" />
           <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource AccentBase}"
                      FontSize="11.5"
                      IsVisible="{Binding StatusMessage, Converter={x:Static views:Converters.HasText}}" />
@@ -293,9 +294,9 @@
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
           <TextBlock Text="{Binding SelectionDetailText}" Classes="tertiary" FontSize="11.5" />
-          <Button Classes="ghost" Content="Export CSV" Command="{Binding ExportCsvCommand}"
+          <Button Classes="ghost" Content="{l:T Results.ExportCsv}" Command="{Binding ExportCsvCommand}"
                   FontSize="11.5" Padding="9,4" />
-          <Button Classes="ghost" Content="JSON" Command="{Binding ExportJsonCommand}"
+          <Button Classes="ghost" Content="{l:T Results.ExportJson}" Command="{Binding ExportJsonCommand}"
                   FontSize="11.5" Padding="9,4" />
         </StackPanel>
       </Grid>
@@ -310,29 +311,29 @@
             BorderBrush="{DynamicResource BorderStrong}"
             BoxShadow="0 18 48 0 #99000000">
       <StackPanel Spacing="14">
-        <TextBlock Classes="subtitle" Text="Options" />
+        <TextBlock Classes="subtitle" Text="{l:T Options.Title}" />
 
         <StackPanel Spacing="8">
           <Button Classes="ghost" HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Left"
                   Command="{Binding ToggleUnitsCommand}"
-                  Content="Switch units (KiB / KB)" />
+                  Content="{l:T Options.Units}" />
           <Button Classes="ghost" HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Left"
                   Command="{Binding ToggleSizeOnDiskCommand}"
-                  Content="Switch size / size on disk" />
+                  Content="{l:T Options.SizeOnDisk}" />
           <Button Classes="ghost" HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Left"
                   Command="{Binding ToggleThemeCommand}"
-                  Content="Switch light / dark theme" />
+                  Content="{l:T Options.Theme}" />
         </StackPanel>
 
         <Border Classes="divider" />
 
         <StackPanel Spacing="5">
-          <TextBlock Classes="caption" Text="KEYBOARD" />
+          <TextBlock Classes="caption" Text="{l:T Options.Keyboard}" />
           <TextBlock Classes="tertiary" FontSize="11.5" LineHeight="19"
-                     Text="Enter — zoom into folder&#10;Backspace — zoom out&#10;Arrows — walk the treemap&#10;Ctrl+F — focus filter&#10;F5 — rescan selection&#10;Delete — move to trash&#10;Shift+Delete — delete permanently" />
+                     Text="{l:T Options.Shortcuts}" />
         </StackPanel>
       </StackPanel>
     </Border>

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Input;
 
@@ -30,30 +31,42 @@ public sealed class NodeContextMenu : ContextMenu
 
     public NodeContextMenu()
     {
-        Items.Add(Item("Open", "OpenSelectedCommand"));
-        Items.Add(Item("Show in file manager", "RevealSelectedCommand"));
-        Items.Add(Item("Open terminal here", "OpenTerminalHereCommand"));
+        Items.Add(Item("Menu.Open", "OpenSelectedCommand"));
+        Items.Add(Item("Menu.Reveal", "RevealSelectedCommand"));
+        Items.Add(Item("Menu.Terminal", "OpenTerminalHereCommand"));
         Items.Add(new Separator());
 
-        Items.Add(Item("Copy path", "CopyPathCommand", gesture: new KeyGesture(Key.C, KeyModifiers.Control)));
-        Items.Add(Item("Zoom into", "ZoomIntoCommand", parameterPath: "SelectedNode",
+        Items.Add(Item("Menu.CopyPath", "CopyPathCommand", gesture: new KeyGesture(Key.C, KeyModifiers.Control)));
+        Items.Add(Item("Menu.ZoomInto", "ZoomIntoCommand", parameterPath: "SelectedNode",
             gesture: new KeyGesture(Key.Enter)));
-        Items.Add(Item("Rescan this folder", "RefreshSelectedCommand", gesture: new KeyGesture(Key.F5)));
+        Items.Add(Item("Menu.Rescan", "RefreshSelectedCommand", gesture: new KeyGesture(Key.F5)));
         Items.Add(new Separator());
 
-        Items.Add(Item("Move to trash", "RequestDeleteToTrashCommand", gesture: new KeyGesture(Key.Delete)));
-        Items.Add(Item("Delete permanently...", "RequestDeletePermanentlyCommand",
+        Items.Add(Item("Menu.Trash", "RequestDeleteToTrashCommand", gesture: new KeyGesture(Key.Delete)));
+        Items.Add(Item("Menu.DeletePermanently", "RequestDeletePermanentlyCommand",
             gesture: new KeyGesture(Key.Delete, KeyModifiers.Shift)));
     }
 
     /// <summary>
-    /// Builds one item. The gesture is shown as a hint only — the shortcuts themselves are
-    /// handled by the view, so they work whether or not the menu is open.
+    /// Builds one item from a translation key.
     /// </summary>
+    /// <remarks>
+    /// The header binds through the localizer rather than being set to a fixed string, so a
+    /// language change retranslates menus that were built before it. The gesture is a hint
+    /// only — the shortcuts themselves are handled by the view, so they work whether or not
+    /// the menu is open.
+    /// </remarks>
     private static MenuItem Item(
-        string header, string commandPath, string? parameterPath = null, KeyGesture? gesture = null)
+        string headerKey, string commandPath, string? parameterPath = null, KeyGesture? gesture = null)
     {
-        var item = new MenuItem { Header = header };
+        var item = new MenuItem();
+
+        item.Bind(HeaderedSelectingItemsControl.HeaderProperty, new Binding
+        {
+            Path = nameof(Localization.Loc.TranslatedString.Value),
+            Source = Localization.Loc.Get(headerKey),
+            Mode = BindingMode.OneWay,
+        });
 
         item.Bind(MenuItem.CommandProperty, new Binding(commandPath));
         if (parameterPath is not null)

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DirStat.App.Localization;
 using DirStat.App.Services;
 using DirStat.Core.Files;
 using DirStat.Core.Filtering;
@@ -110,7 +111,7 @@ public sealed partial class MainViewModel : ObservableObject
             // A platform file dialog can fail for reasons entirely outside the app —
             // a missing desktop portal being the usual one on Linux. Say so rather than
             // letting it surface as an unhandled exception from a command.
-            StatusMessage = $"Could not open the folder picker: {e.Message}";
+            StatusMessage = Loc.Format("Status.PickerFailed", e.Message);
             return;
         }
 
@@ -135,7 +136,7 @@ public sealed partial class MainViewModel : ObservableObject
         Screen = AppScreen.Scanning;
         IsBusy = true;
         StatusMessage = string.Empty;
-        ScanTargetText = paths.Count == 1 ? paths[0] : $"{paths.Count} locations";
+        ScanTargetText = paths.Count == 1 ? paths[0] : Loc.Format("Scan.Locations", paths.Count);
         ResetScanCounters();
 
         var options = BuildScanOptions();
@@ -157,7 +158,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            StatusMessage = $"Scan failed: {e.Message}";
+            StatusMessage = Loc.Format("Status.ScanFailed", e.Message);
             Screen = AppScreen.Volumes;
         }
         finally
@@ -197,7 +198,7 @@ public sealed partial class MainViewModel : ObservableObject
         ScanFilesText = SizeFormatter.FormatCount(progress.FilesSeen);
         ScanDirectoriesText = SizeFormatter.FormatCount(progress.DirectoriesSeen);
         ScanBytesText = SizeFormatter.Format(progress.BytesSeen);
-        ScanRateText = $"{SizeFormatter.FormatCount((long)progress.FilesPerSecond)} files/s";
+        ScanRateText = Loc.Format("Scan.FilesPerSecond", SizeFormatter.FormatCount((long)progress.FilesPerSecond));
         ScanElapsedText = SizeFormatter.FormatDuration(progress.Elapsed);
         ScanCurrentPath = progress.CurrentPath;
     }
@@ -262,18 +263,18 @@ public sealed partial class MainViewModel : ObservableObject
         TreemapRoot = result.Root;
         SelectedNode = result.Root;
 
-        SummaryText =
-            $"{SizeFormatter.Format(result.TotalBytes)}  ·  " +
-            $"{SizeFormatter.FormatCount(result.TotalFiles)} files  ·  " +
-            $"{SizeFormatter.FormatCount(result.TotalDirectories)} folders  ·  " +
-            $"scanned in {SizeFormatter.FormatDuration(result.Duration)}";
+        SummaryText = Loc.Format("Summary.Scan",
+            SizeFormatter.Format(result.TotalBytes),
+            SizeFormatter.FormatCount(result.TotalFiles),
+            SizeFormatter.FormatCount(result.TotalDirectories),
+            SizeFormatter.FormatDuration(result.Duration));
 
         HasDenied = result.DeniedPaths.Count > 0;
         DeniedText = HasDenied
-            ? $"{SizeFormatter.FormatCount(result.DeniedPaths.Count)} folders could not be read"
+            ? Loc.Format("Status.DeniedFolders", SizeFormatter.FormatCount(result.DeniedPaths.Count))
             : string.Empty;
 
-        StatusMessage = result.WasCancelled ? "Scan cancelled — showing partial results." : string.Empty;
+        StatusMessage = result.WasCancelled ? Loc.T("Status.ScanCancelled") : string.Empty;
         Screen = AppScreen.Results;
     }
 
@@ -312,21 +313,26 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         SelectionPathText = value.GetFullPath();
-
-        var parts = new List<string> { SizeFormatter.Format(Settings.ShowSizeOnDisk ? value.SizeOnDisk : value.Size) };
-        if (value.IsDirectory)
-        {
-            parts.Add($"{SizeFormatter.FormatCount(value.FileCount)} files");
-            parts.Add($"{SizeFormatter.FormatCount(value.DirCount)} folders");
-        }
-        if (value.Parent is not null)
-            parts.Add($"{SizeFormatter.FormatPercent(value.FractionOfParent)} of parent");
-
-        SelectionDetailText = string.Join("   ·   ", parts);
-
+        UpdateSelectionDetail(value);
         UpdateBreadcrumbs();
 
         if (!_synchronizingSelection) SyncTreeToSelection(value);
+    }
+
+    private void UpdateSelectionDetail(FileNode node)
+    {
+        var parts = new List<string> { SizeFormatter.Format(Settings.ShowSizeOnDisk ? node.SizeOnDisk : node.Size) };
+
+        if (node.IsDirectory)
+        {
+            parts.Add(Loc.Format("Summary.NFiles", SizeFormatter.FormatCount(node.FileCount)));
+            parts.Add(Loc.Format("Summary.NFolders", SizeFormatter.FormatCount(node.DirCount)));
+        }
+
+        if (node.Parent is not null)
+            parts.Add(Loc.Format("Summary.OfParent", SizeFormatter.FormatPercent(node.FractionOfParent)));
+
+        SelectionDetailText = string.Join("   ·   ", parts);
     }
 
     /// <summary>Expands and scrolls the grid to whatever the treemap or a breadcrumb selected.</summary>
@@ -491,7 +497,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (CopyToClipboardAsync is null) return;
 
         await CopyToClipboardAsync(node.GetFullPath());
-        StatusMessage = "Path copied to clipboard.";
+        StatusMessage = Loc.T("Status.PathCopied");
     }
 
     // ---- deletion, behind an explicit confirmation
@@ -538,14 +544,12 @@ public sealed partial class MainViewModel : ObservableObject
         _pendingPermanentDelete = permanent;
 
         var what = node.IsDirectory
-            ? $"{node.Name} and its {SizeFormatter.FormatCount(node.FileCount)} files"
+            ? Loc.Format("Confirm.AndFiles", node.Name, SizeFormatter.FormatCount(node.FileCount))
             : node.Name;
 
         var confirmed = await RequestConfirmationAsync(
-            permanent ? "Delete permanently?" : "Move to trash?",
-            permanent
-                ? $"{what} will be erased immediately. This cannot be undone.\n\n{node.GetFullPath()}"
-                : $"{what} will be moved to the trash.\n\n{node.GetFullPath()}");
+            Loc.T(permanent ? "Confirm.DeleteTitle" : "Confirm.TrashTitle"),
+            Loc.Format(permanent ? "Confirm.DeleteBody" : "Confirm.TrashBody", what, node.GetFullPath()));
 
         if (confirmed) await DeleteConfirmedAsync();
     }
@@ -583,7 +587,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        StatusMessage = _pendingPermanentDelete ? $"Deleted {node.Name}." : $"Moved {node.Name} to trash.";
+        StatusMessage = Loc.Format(_pendingPermanentDelete ? "Status.Deleted" : "Status.Trashed", node.Name);
 
         // Re-walk the containing folder so the tree and the map agree with the disk again.
         if (parent is not null) await RefreshNodeAsync(parent);
@@ -625,7 +629,7 @@ public sealed partial class MainViewModel : ObservableObject
             await RefreshNodeAsync(parent);
         }
 
-        StatusMessage = $"Recovered space from {SizeFormatter.FormatCount(removed.Count)} duplicates.";
+        StatusMessage = Loc.Format("Status.RecoveredDuplicates", SizeFormatter.FormatCount(removed.Count));
     }
 
     private static bool IsDescendantOf(FileNode node, FileNode ancestor)
@@ -706,11 +710,11 @@ public sealed partial class MainViewModel : ObservableObject
             TreemapRoot = keepZoom is not null && IsStillAttached(keepZoom) ? keepZoom : _unfilteredRoot;
             SelectedNode = node;
 
-            StatusMessage = $"Refreshed {node.Name}.";
+            StatusMessage = Loc.Format("Status.Refreshed", node.Name);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            StatusMessage = $"Refresh failed: {e.Message}";
+            StatusMessage = Loc.Format("Status.RefreshFailed", e.Message);
         }
         finally
         {
@@ -747,7 +751,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception e)
         {
-            StatusMessage = $"Could not open the save dialog: {e.Message}";
+            StatusMessage = Loc.Format("Status.SaveDialogFailed", e.Message);
             return;
         }
 
@@ -763,11 +767,11 @@ public sealed partial class MainViewModel : ObservableObject
                 else ExportService.ExportJson(root, target);
             });
 
-            StatusMessage = $"Exported to {target}";
+            StatusMessage = Loc.Format("Status.Exported", target);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            StatusMessage = $"Export failed: {e.Message}";
+            StatusMessage = Loc.Format("Status.ExportFailed", e.Message);
         }
         finally
         {
@@ -790,6 +794,67 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Settings.ShowSizeOnDisk = !Settings.ShowSizeOnDisk;
         RebuildAfterDisplayChange();
+    }
+
+    // ------------------------------------------------------------- language
+
+    /// <summary>Languages offered in the title bar selector.</summary>
+    public IReadOnlyList<LanguageOption> Languages { get; } =
+    [
+        new(AppLanguage.English, "EN", "English"),
+        new(AppLanguage.German, "DE", "Deutsch"),
+        new(AppLanguage.French, "FR", "Français"),
+        new(AppLanguage.Spanish, "ES", "Español"),
+    ];
+
+    [ObservableProperty] private bool _isLanguageMenuOpen;
+
+    [RelayCommand]
+    private void ToggleLanguageMenu() => IsLanguageMenuOpen = !IsLanguageMenuOpen;
+
+    [RelayCommand]
+    private void SetLanguage(LanguageOption? option)
+    {
+        if (option is null) return;
+
+        Loc.Current.Language = option.Language;
+        Settings.Language = option.Language.ToString();
+        IsLanguageMenuOpen = false;
+
+        // Text built in code rather than bound has to be regenerated by hand.
+        RefreshLocalizedText();
+    }
+
+    /// <summary>
+    /// Rebuilds strings that were composed in code at the time they were set.
+    /// </summary>
+    /// <remarks>
+    /// Bound labels retranslate themselves through the localizer's indexer, but summaries and
+    /// status lines are formatted once and stored, so they would otherwise keep the wording of
+    /// whichever language was active when they were produced.
+    /// </remarks>
+    private void RefreshLocalizedText()
+    {
+        if (_result is not null)
+        {
+            SummaryText = Loc.Format("Summary.Scan",
+                SizeFormatter.Format(_result.TotalBytes),
+                SizeFormatter.FormatCount(_result.TotalFiles),
+                SizeFormatter.FormatCount(_result.TotalDirectories),
+                SizeFormatter.FormatDuration(_result.Duration));
+
+            DeniedText = HasDenied
+                ? Loc.Format("Status.DeniedFolders", SizeFormatter.FormatCount(_result.DeniedPaths.Count))
+                : string.Empty;
+
+            Extensions.Clear();
+            foreach (var stat in _result.Extensions.Take(400))
+                Extensions.Add(new ExtensionViewModel(stat));
+        }
+
+        if (SelectedNode is { } node) UpdateSelectionDetail(node);
+
+        StatusMessage = string.Empty;
     }
 
     [RelayCommand]
@@ -841,6 +906,9 @@ public sealed partial class MainViewModel : ObservableObject
         if (!result.Success && result.Message is not null) StatusMessage = result.Message;
     }
 }
+
+/// <summary>A language offered in the title bar selector.</summary>
+public sealed record LanguageOption(AppLanguage Language, string Code, string Name);
 
 /// <summary>One hop in the treemap zoom trail.</summary>
 public sealed class BreadcrumbViewModel(FileNode node, bool isCurrent)

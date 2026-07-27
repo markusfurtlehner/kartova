@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DirStat.App.ViewModels"
+             xmlns:l="using:DirStat.App.Localization"
              mc:Ignorable="d"
              x:Class="DirStat.App.Views.ScanProgressView"
              x:DataType="vm:MainViewModel">
@@ -12,7 +13,7 @@
                 Width="620" Spacing="30">
 
       <StackPanel Spacing="8" HorizontalAlignment="Center">
-        <TextBlock Classes="display" Text="Scanning" HorizontalAlignment="Center" />
+        <TextBlock Classes="display" Text="{l:T Scan.Title}" HorizontalAlignment="Center" />
         <TextBlock Text="{Binding ScanTargetText}" Classes="secondary"
                    HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
       </StackPanel>
@@ -27,37 +28,37 @@
         <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="22">
 
           <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
-            <TextBlock Classes="caption" Text="FILES" />
+            <TextBlock Classes="caption" Text="{l:T Scan.Files}" />
             <TextBlock Text="{Binding ScanFilesText}" Classes="title numeric"
                        HorizontalAlignment="Left" />
           </StackPanel>
 
           <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
-            <TextBlock Classes="caption" Text="FOLDERS" />
+            <TextBlock Classes="caption" Text="{l:T Scan.Folders}" />
             <TextBlock Text="{Binding ScanDirectoriesText}" Classes="title numeric"
                        HorizontalAlignment="Left" />
           </StackPanel>
 
           <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4">
-            <TextBlock Classes="caption" Text="TOTAL SIZE" />
+            <TextBlock Classes="caption" Text="{l:T Scan.TotalSize}" />
             <TextBlock Text="{Binding ScanBytesText}" Classes="title numeric"
                        HorizontalAlignment="Left" />
           </StackPanel>
 
           <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
-            <TextBlock Classes="caption" Text="ELAPSED" />
+            <TextBlock Classes="caption" Text="{l:T Scan.Elapsed}" />
             <TextBlock Text="{Binding ScanElapsedText}" Classes="subtitle numeric"
                        HorizontalAlignment="Left" />
           </StackPanel>
 
           <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="4">
-            <TextBlock Classes="caption" Text="THROUGHPUT" />
+            <TextBlock Classes="caption" Text="{l:T Scan.Throughput}" />
             <TextBlock Text="{Binding ScanRateText}" Classes="subtitle numeric"
                        HorizontalAlignment="Left" />
           </StackPanel>
 
           <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4">
-            <TextBlock Classes="caption" Text="CURRENT FOLDER" />
+            <TextBlock Classes="caption" Text="{l:T Scan.CurrentFolder}" />
             <TextBlock Text="{Binding ScanCurrentPath}" Classes="tertiary mono"
                        FontSize="11.5" TextTrimming="CharacterEllipsis" />
           </StackPanel>
@@ -65,11 +66,11 @@
         </Grid>
       </Border>
 
-      <Button Content="Cancel scan" Command="{Binding CancelScanCommand}"
+      <Button Content="{l:T Scan.Cancel}" Command="{Binding CancelScanCommand}"
               HorizontalAlignment="Center" Padding="22,9" />
 
       <TextBlock Classes="tertiary" HorizontalAlignment="Center" FontSize="11.5"
-                 Text="Cancelling still shows everything found so far." />
+                 Text="{l:T Scan.CancelHint}" />
 
     </StackPanel>
   </Border>

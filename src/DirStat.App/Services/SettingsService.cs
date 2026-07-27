@@ -15,6 +15,12 @@ public sealed class AppSettings
 {
     public AppTheme Theme { get; set; } = AppTheme.Dark;
 
+    /// <summary>
+    /// Interface language. Null means follow the operating system, which is what a first run
+    /// should do rather than assuming English.
+    /// </summary>
+    public string? Language { get; set; }
+
     /// <summary>Report sizes in KiB/MiB/GiB rather than KB/MB/GB.</summary>
     public bool UseBinaryUnits { get; set; } = true;
 

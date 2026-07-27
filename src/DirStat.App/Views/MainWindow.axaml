@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:DirStat.App.ViewModels"
         xmlns:views="using:DirStat.App.Views"
+        xmlns:l="using:DirStat.App.Localization"
         mc:Ignorable="d"
         x:Class="DirStat.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
@@ -37,20 +38,49 @@
       </StackPanel>
 
       <StackPanel Grid.Column="2" Orientation="Horizontal">
-        <Button Classes="caption" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Switch theme">
+
+        <!-- Language selector. Sits left of the theme toggle, as asked, and shows the
+             active language as a two-letter code so it needs no icon. -->
+        <!-- The flyout opens on click by itself; no command needed. -->
+        <Button Classes="caption" Width="46" ToolTip.Tip="{l:T Window.Language}">
+          <TextBlock Text="{Binding LanguageCode, Source={x:Static l:Loc.Current}}"
+                     FontSize="11.5" FontWeight="SemiBold" />
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <ItemsControl ItemsSource="{Binding Languages}" Margin="-4">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LanguageOption">
+                    <Button Classes="ghost language-item"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SetLanguageCommand}"
+                            CommandParameter="{Binding}">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding Code}" FontWeight="SemiBold" FontSize="11.5"
+                                   Width="24" Foreground="{DynamicResource AccentBase}" />
+                        <TextBlock Text="{Binding Name}" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <Button Classes="caption" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="{l:T Window.Theme}">
           <TextBlock Text="◐" FontSize="14" />
         </Button>
 
         <!-- Window controls, hidden on Linux where the window manager draws its own.
              See MainWindow.ApplyPlatformChrome. -->
         <StackPanel x:Name="WindowControls" Orientation="Horizontal">
-          <Button Classes="caption" Click="OnMinimize" ToolTip.Tip="Minimise">
+          <Button Classes="caption" Click="OnMinimize" ToolTip.Tip="{l:T Window.Minimise}">
             <TextBlock Text="—" FontSize="11" />
           </Button>
-          <Button Classes="caption" Click="OnMaximize" ToolTip.Tip="Maximise">
+          <Button Classes="caption" Click="OnMaximize" ToolTip.Tip="{l:T Window.Maximise}">
             <TextBlock Text="□" FontSize="12" />
           </Button>
-          <Button Classes="caption close" Click="OnClose" ToolTip.Tip="Close">
+          <Button Classes="caption close" Click="OnClose" ToolTip.Tip="{l:T Window.Close}">
             <TextBlock Text="✕" FontSize="12" />
           </Button>
         </StackPanel>
@@ -85,8 +115,8 @@
             <TextBlock Text="{Binding ConfirmBody}" Classes="secondary"
                        TextWrapping="Wrap" LineHeight="20" />
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-              <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
-              <Button Classes="danger" Content="Continue" Command="{Binding ConfirmDeleteCommand}" />
+              <Button Content="{l:T Common.Cancel}" Command="{Binding CancelDeleteCommand}" />
+              <Button Classes="danger" Content="{l:T Common.Continue}" Command="{Binding ConfirmDeleteCommand}" />
             </StackPanel>
           </StackPanel>
         </Border>
