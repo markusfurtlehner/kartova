@@ -62,7 +62,9 @@ header to sort; click it again to reverse.
 shading so nesting stays readable. Click to select, double-click to zoom in, `Backspace` to
 zoom out, arrow keys to walk the hierarchy.
 
-**File types** — every extension in the scan, largest first.
+**File types** — every extension in the scan, largest first. Click one to isolate it: the
+tree and the treemap narrow to just those files, so "where are all my videos" takes one
+click rather than a typed query.
 
 Right-click anything for open, reveal in file manager, open terminal here, copy path,
 rescan, and delete.

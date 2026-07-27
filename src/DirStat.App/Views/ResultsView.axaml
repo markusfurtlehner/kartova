@@ -222,9 +222,15 @@
       <!-- ===================================== File types ===================================== -->
       <Border Grid.Column="4" Background="{DynamicResource SurfaceBase}">
         <Grid RowDefinitions="Auto,*">
-          <TextBlock Grid.Row="0" Classes="caption" Text="FILE TYPES" Margin="14,11,0,7" />
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="14,11,14,7">
+            <TextBlock Grid.Column="0" Classes="caption" Text="FILE TYPES" />
+            <TextBlock Grid.Column="1" Classes="tertiary" FontSize="10.5"
+                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Text="click to isolate" />
+          </Grid>
 
           <ListBox Grid.Row="1" ItemsSource="{Binding Extensions}"
+                   SelectedItem="{Binding SelectedExtension, Mode=TwoWay}"
                    Background="Transparent" BorderThickness="0"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>

@@ -202,6 +202,21 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<ExtensionViewModel> Extensions { get; } = [];
     public ObservableCollection<BreadcrumbViewModel> Breadcrumbs { get; } = [];
 
+    /// <summary>
+    /// The file type picked in the third pane. Selecting one narrows the tree and the
+    /// treemap to that type, which is how WinDirStat lets you answer "where are all my
+    /// videos" without typing anything.
+    /// </summary>
+    [ObservableProperty] private ExtensionViewModel? _selectedExtension;
+
+    partial void OnSelectedExtensionChanged(ExtensionViewModel? value)
+    {
+        if (value is null || _synchronizingSelection) return;
+
+        // Extensionless files cannot be expressed as a *.ext pattern, so clear instead.
+        FilterText = value.Extension.Length == 0 ? string.Empty : $"*{value.Extension}";
+    }
+
     /// <summary>Guards against selection changes echoing between panes forever.</summary>
     private bool _synchronizingSelection;
 
@@ -212,6 +227,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         BuildTree(result.Root);
 
+        SelectedExtension = null;
         Extensions.Clear();
         foreach (var stat in result.Extensions.Take(400))
             Extensions.Add(new ExtensionViewModel(stat));
@@ -389,6 +405,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsFiltered = false;
             FilterSummary = string.Empty;
+            // Drop the file-type highlight too, so clicking the same type again re-applies it.
+            SelectedExtension = null;
             BuildTree(root);
             TreemapRoot = root;
             SelectedNode = root;
