@@ -12,17 +12,15 @@
         MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SurfaceBase}"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="-1"
         Icon="/Assets/dirstat.ico">
 
   <Grid RowDefinitions="Auto,*">
 
     <!-- ===================================================== Title bar -->
-    <!-- A custom caption keeps the shell consistent across the three platforms
-         instead of inheriting three different system title bars. -->
-    <Grid Grid.Row="0" Height="38" Background="{DynamicResource TitleBarBrush}"
+    <!-- A custom caption keeps the shell consistent across platforms instead of
+         inheriting three different system title bars. On Linux the window manager
+         insists on decorating anyway, so this degrades to a header strip there. -->
+    <Grid x:Name="TitleBar" Grid.Row="0" Height="38" Background="{DynamicResource TitleBarBrush}"
           ColumnDefinitions="Auto,*,Auto"
           PointerPressed="OnTitleBarPressed"
           DoubleTapped="OnTitleBarDoubleTapped">
@@ -42,15 +40,20 @@
         <Button Classes="caption" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Switch theme">
           <TextBlock Text="◐" FontSize="14" />
         </Button>
-        <Button Classes="caption" Click="OnMinimize" ToolTip.Tip="Minimise">
-          <TextBlock Text="—" FontSize="11" />
-        </Button>
-        <Button Classes="caption" Click="OnMaximize" ToolTip.Tip="Maximise">
-          <TextBlock Text="□" FontSize="12" />
-        </Button>
-        <Button Classes="caption close" Click="OnClose" ToolTip.Tip="Close">
-          <TextBlock Text="✕" FontSize="12" />
-        </Button>
+
+        <!-- Window controls, hidden on Linux where the window manager draws its own.
+             See MainWindow.ApplyPlatformChrome. -->
+        <StackPanel x:Name="WindowControls" Orientation="Horizontal">
+          <Button Classes="caption" Click="OnMinimize" ToolTip.Tip="Minimise">
+            <TextBlock Text="—" FontSize="11" />
+          </Button>
+          <Button Classes="caption" Click="OnMaximize" ToolTip.Tip="Maximise">
+            <TextBlock Text="□" FontSize="12" />
+          </Button>
+          <Button Classes="caption close" Click="OnClose" ToolTip.Tip="Close">
+            <TextBlock Text="✕" FontSize="12" />
+          </Button>
+        </StackPanel>
       </StackPanel>
     </Grid>
 

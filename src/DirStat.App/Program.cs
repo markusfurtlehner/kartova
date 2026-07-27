@@ -7,8 +7,59 @@ internal static class Program
 {
     // Must run before any Avalonia type is touched, so it cannot be an instance method.
     [STAThread]
-    public static void Main(string[] args) =>
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        if (!TryVerifyDisplay(out var problem))
+        {
+            Console.Error.WriteLine(problem);
+            return 78; // EX_CONFIG
+        }
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return 0;
+        }
+        catch (Exception e)
+        {
+            // A GUI toolkit that cannot initialise otherwise dies without ever explaining
+            // itself, which over SSH looks like the app simply hanging.
+            Console.Error.WriteLine("DirStat failed to start.");
+            Console.Error.WriteLine(e.Message);
+            return 1;
+        }
+    }
+
+    /// <summary>
+    /// Confirms there is a display server to draw on before Avalonia is initialised.
+    /// </summary>
+    /// <remarks>
+    /// Without this an X11 launch with no <c>DISPLAY</c> — over SSH, in a container, or from
+    /// a non-login shell that never sourced the desktop profile — produces a process that
+    /// sits there indefinitely showing nothing and reporting nothing.
+    /// </remarks>
+    private static bool TryVerifyDisplay(out string problem)
+    {
+        problem = string.Empty;
+        if (!OperatingSystem.IsLinux()) return true;
+
+        var x11 = Environment.GetEnvironmentVariable("DISPLAY");
+        var wayland = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+        if (!string.IsNullOrEmpty(x11) || !string.IsNullOrEmpty(wayland)) return true;
+
+        problem =
+            """
+            DirStat found no display server: neither DISPLAY nor WAYLAND_DISPLAY is set.
+
+            DirStat is a graphical application and needs a desktop session.
+
+              - Over SSH, reconnect with X11 forwarding:  ssh -X user@host
+              - Under WSL, run it from a login shell so WSLg sets the environment,
+                or export it yourself:  export DISPLAY=:0
+              - In a container, pass the display through along with /tmp/.X11-unix
+            """;
+        return false;
+    }
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()

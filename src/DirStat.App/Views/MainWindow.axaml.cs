@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ApplyPlatformChrome();
 
         // The window owns the platform services the view model needs but should not know about.
         DataContextChanged += (_, _) => WireUpViewModel();
@@ -20,6 +21,31 @@ public partial class MainWindow : Window
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
+
+    /// <summary>
+    /// Chooses between a custom caption and the system one.
+    /// </summary>
+    /// <remarks>
+    /// Windows and macOS honour an extended client area, so the app draws its own title bar
+    /// and the shell looks the same on both. Linux window managers are not obliged to, and
+    /// several — WSLg among them — decorate the window regardless, which would leave two
+    /// stacked title bars. There, the system caption is kept and the app's own row degrades
+    /// to a header strip without window controls.
+    /// </remarks>
+    private void ApplyPlatformChrome()
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            SystemDecorations = SystemDecorations.Full;
+            if (this.FindControl<StackPanel>("WindowControls") is { } controls)
+                controls.IsVisible = false;
+            return;
+        }
+
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
+    }
 
     private void WireUpViewModel()
     {

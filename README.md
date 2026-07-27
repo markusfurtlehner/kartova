@@ -38,6 +38,15 @@ nothing else to install.
 | macOS | `DirStat.app` | x64 and arm64. Unsigned, so the first launch needs right-click → Open |
 | Linux | `DirStat` | x64 and arm64. Needs `libX11`, `libICE`, `libSM` and `fontconfig`, present on every desktop install |
 
+On Linux, DirStat needs a desktop session — `DISPLAY` or `WAYLAND_DISPLAY` must be set. If
+neither is, it says so and exits rather than sitting there showing nothing. Over SSH use
+`ssh -X`; under WSL run it from a login shell so WSLg sets the environment, or
+`export DISPLAY=:0` yourself.
+
+Windows and macOS get a custom title bar. Linux window managers are not obliged to honour
+an extended client area and several decorate the window anyway, so there DirStat keeps the
+system caption instead of stacking two title bars.
+
 Or build it yourself:
 
 ```sh
