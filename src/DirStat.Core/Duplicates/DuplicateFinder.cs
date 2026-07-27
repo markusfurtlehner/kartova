@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using DirStat.Core.Model;
+using DirStat.Core.Scanning;
 
 namespace DirStat.Core.Duplicates;
 
@@ -164,8 +165,12 @@ public sealed class DuplicateFinder
                     matches.Add(node);
                 }
 
-                foreach (var (hash, matches) in byHash)
+                foreach (var (hash, rawMatches) in byHash)
                 {
+                    if (rawMatches.Count < 2) continue;
+
+                    // Copies that are hard links to one another already share their bytes.
+                    var matches = RemoveHardLinkAliases(rawMatches);
                     if (matches.Count < 2) continue;
 
                     var members = options.VerifyByteForByte
@@ -275,6 +280,45 @@ public sealed class DuplicateFinder
             hash = ContentHash.Zero;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Keeps one entry per distinct piece of storage, dropping paths that are hard links to
+    /// a copy already in the group.
+    /// </summary>
+    /// <remarks>
+    /// Hard links point at the same bytes, so removing one recovers nothing — reporting them
+    /// as duplicates would promise space that does not exist. They matter far more on Linux
+    /// and macOS, where package managers and backup tools such as rsnapshot and Time Machine
+    /// use them heavily, than on Windows.
+    ///
+    /// This runs only on already-confirmed groups, which are few, so the per-file metadata
+    /// query costs nothing measurable. Where the platform cannot answer — an unsupported
+    /// filesystem, or a layout the self-test rejected — the group is returned untouched,
+    /// which is the pre-existing behaviour rather than a wrong one.
+    /// </remarks>
+    private static List<FileNode> RemoveHardLinkAliases(List<FileNode> matches)
+    {
+        if (!NativeFs.IsSupported) return matches;
+
+        var seenStorage = new HashSet<(ulong Volume, ulong File)>();
+        var distinct = new List<FileNode>(matches.Count);
+
+        foreach (var node in matches)
+        {
+            if (!NativeFs.TryGetMetadata(node.GetFullPath(), out var meta) || meta.FileId == 0)
+            {
+                // Nothing to compare it against; keep it rather than silently discard it.
+                distinct.Add(node);
+                continue;
+            }
+
+            // A single-link file cannot alias anything, so skip the bookkeeping.
+            if (!meta.IsHardLinked || seenStorage.Add((meta.VolumeId, meta.FileId)))
+                distinct.Add(node);
+        }
+
+        return distinct;
     }
 
     /// <summary>Splits a hash-matched group into byte-identical subsets.</summary>

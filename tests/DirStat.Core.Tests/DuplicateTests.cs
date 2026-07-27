@@ -347,6 +347,91 @@ public class DuplicateTests
         Assert.Equal("original.bin", group.Items[0].Name);
     }
 
+    // --------------------------------------------------------------- hard links
+
+    [Fact]
+    public void Hard_links_to_the_same_bytes_are_not_reported_as_duplicates()
+    {
+        // Two names for one piece of storage. Removing either recovers nothing, so
+        // reporting them would promise space that does not exist.
+        using var tree = new TempTree();
+        WriteFile(tree, "original.bin", 40_000, seed: 5);
+
+        var original = Path.Combine(tree.Root, "original.bin");
+        var link = Path.Combine(tree.Root, "linked.bin");
+
+        try
+        {
+            CreateHardLink(original, link);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                       or PlatformNotSupportedException or EntryPointNotFoundException)
+        {
+            return; // filesystem or platform will not do hard links; nothing to assert
+        }
+
+        if (!File.Exists(link)) return;
+        if (!DirStat.Core.Scanning.NativeFs.IsSupported) return; // cannot tell them apart here
+
+        var result = Run(tree, new DuplicateOptions { MinimumFileSize = 1, FindDuplicateFolders = false });
+
+        Assert.Empty(result.FileGroups);
+    }
+
+    [Fact]
+    public void A_genuine_copy_alongside_a_hard_link_is_still_reported()
+    {
+        using var tree = new TempTree();
+        WriteFile(tree, "original.bin", 40_000, seed: 6);
+        WriteFile(tree, "realcopy.bin", 40_000, seed: 6);
+
+        var original = Path.Combine(tree.Root, "original.bin");
+        var link = Path.Combine(tree.Root, "linked.bin");
+
+        try
+        {
+            CreateHardLink(original, link);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                       or PlatformNotSupportedException or EntryPointNotFoundException)
+        {
+            return;
+        }
+
+        if (!File.Exists(link)) return;
+        if (!DirStat.Core.Scanning.NativeFs.IsSupported) return;
+
+        var result = Run(tree, new DuplicateOptions { MinimumFileSize = 1, FindDuplicateFolders = false });
+
+        // The real copy is recoverable; the hard link is not, so exactly two entries remain.
+        var group = Assert.Single(result.FileGroups);
+        Assert.Equal(2, group.CopyCount);
+        Assert.Equal(40_000, group.WastedBytes);
+    }
+
+    private static void CreateHardLink(string existing, string link)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            if (!NativeLink.CreateHardLinkW(link, existing, IntPtr.Zero))
+                throw new IOException("CreateHardLink failed");
+            return;
+        }
+
+        if (NativeLink.link(existing, link) != 0)
+            throw new IOException("link() failed");
+    }
+
+    private static class NativeLink
+    {
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        public static extern bool CreateHardLinkW(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+        [System.Runtime.InteropServices.DllImport("libc", EntryPoint = "link", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+        public static extern int link(string oldpath, string newpath);
+    }
+
     // ------------------------------------------------------------------ hashing
 
     [Fact]
