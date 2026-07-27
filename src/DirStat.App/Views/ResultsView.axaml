@@ -389,6 +389,10 @@
                   HorizontalContentAlignment="Left"
                   Command="{Binding ToggleExclusionsCommand}"
                   Content="{l:T Options.Exclusions}" />
+          <Button Classes="ghost" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Left"
+                  Command="{Binding ShowAboutCommand}"
+                  Content="{l:T Window.About}" />
         </StackPanel>
 
         <Border Classes="divider" />

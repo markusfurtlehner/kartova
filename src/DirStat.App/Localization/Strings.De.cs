@@ -27,6 +27,21 @@ public static partial class Strings
         ["Window.Minimise"] = "Minimieren",
         ["Window.Maximise"] = "Maximieren",
         ["Window.Close"] = "Schließen",
+        ["Window.About"] = "Über DirStat",
+
+        // ----------------------------------------------------------------- about
+        ["About.Title"] = "DirStat",
+        ["About.Tagline"] = "Finden Sie heraus, wohin Ihr Speicherplatz verschwunden ist — auf allen drei Plattformen.",
+        ["About.MadeBy"] = "Entwickelt von",
+        ["About.Version"] = "Version",
+        ["About.Licence"] = "Lizenz",
+        ["About.LicenceValue"] = "MIT — frei nutzbar, veränderbar und weitergebbar.",
+        ["About.BuiltWith"] = "Basiert auf",
+        ["About.System"] = "System",
+        ["About.Thanks"] = "Dank an WinDirStat, QDirStat und SpaceSniffer, die gezeigt haben, was ein solches Werkzeug leisten soll.",
+        ["About.Copy"] = "Details kopieren",
+        ["About.Copied"] = "Kopiert",
+        ["About.Close"] = "Schließen",
 
         // --------------------------------------------------------------- volumes
         ["Volumes.Title"] = "Wo ist Ihr Speicher geblieben?",

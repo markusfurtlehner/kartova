@@ -1027,6 +1027,44 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
 
+    // ------------------------------------------------------------------- about
+
+    [ObservableProperty] private bool _isAboutOpen;
+
+    /// <summary>Set once the details have been copied, so the button can say so.</summary>
+    [ObservableProperty] private bool _aboutDetailsCopied;
+
+    public string AboutName => AppInfo.Name;
+    public string AboutAuthor => AppInfo.Author;
+    public string AboutVersion => AppInfo.Version;
+    public string AboutCopyright => AppInfo.Copyright;
+    public string AboutFramework => AppInfo.Framework;
+    public string AboutSystem => AppInfo.System;
+    public string AboutLicence => AppInfo.Licence;
+
+    [RelayCommand]
+    private void ShowAbout()
+    {
+        // Reached from the title bar, so it can open over any screen. Close whatever panel is
+        // hanging open first, otherwise the options card sits on top of the scrim.
+        IsSettingsOpen = false;
+        IsExclusionsOpen = false;
+        AboutDetailsCopied = false;
+        IsAboutOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseAbout() => IsAboutOpen = false;
+
+    [RelayCommand]
+    private async Task CopyAboutDetailsAsync()
+    {
+        if (CopyToClipboardAsync is null) return;
+
+        await CopyToClipboardAsync(AppInfo.Details);
+        AboutDetailsCopied = true;
+    }
+
     private void RebuildAfterDisplayChange()
     {
         if (_unfilteredRoot is null) return;

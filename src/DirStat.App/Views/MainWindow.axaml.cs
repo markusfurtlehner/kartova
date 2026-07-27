@@ -19,6 +19,8 @@ public partial class MainWindow : Window
         DataContextChanged += (_, _) => WireUpViewModel();
         Opened += OnOpened;
         Closing += OnClosing;
+
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -151,6 +153,30 @@ public partial class MainWindow : Window
     private async Task CopyToClipboardAsync(string text)
     {
         if (Clipboard is not null) await Clipboard.SetTextAsync(text);
+    }
+
+    // ---------------------------------------------------------- about dialog
+
+    /// <summary>Dismisses the About dialog when the dimmed backdrop is clicked.</summary>
+    private void OnAboutScrimPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel) viewModel.IsAboutOpen = false;
+    }
+
+    /// <summary>
+    /// Escape closes the About dialog.
+    /// </summary>
+    /// <remarks>
+    /// Registered as a tunnelling handler so it runs before the screens underneath see the key.
+    /// The dialog covers them, so a keystroke aimed at it should never reach the view behind.
+    /// </remarks>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        if (DataContext is not MainViewModel { IsAboutOpen: true } viewModel) return;
+
+        viewModel.IsAboutOpen = false;
+        e.Handled = true;
     }
 
     // --------------------------------------------------------- window chrome

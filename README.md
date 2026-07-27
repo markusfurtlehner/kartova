@@ -264,7 +264,11 @@ surfaces down the tree.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+Made by **Markus Furtlehner**. MIT — see [LICENSE](LICENSE). Free to use, change and share.
+
+The icon is generated, not drawn: `python build/make_icons.py` renders it from the app's own
+accent ramp using nothing but the Python standard library, so there is no third-party artwork
+anywhere in the tree.
 
 DirStat is an independent implementation. It is not affiliated with WinDirStat, QDirStat or
 SpaceSniffer, though it owes all three the debt of a good idea.

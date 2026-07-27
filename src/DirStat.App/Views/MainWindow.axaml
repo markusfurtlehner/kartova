@@ -39,6 +39,12 @@
 
       <StackPanel Grid.Column="2" Orientation="Horizontal">
 
+        <!-- About. In the caption rather than the options panel so it is reachable from the
+             drive picker too, which is where someone lands before any scan exists. -->
+        <Button Classes="caption" Command="{Binding ShowAboutCommand}" ToolTip.Tip="{l:T Window.About}">
+          <TextBlock Text="i" FontSize="12.5" FontWeight="Bold" FontStyle="Italic" />
+        </Button>
+
         <!-- Language selector. Sits left of the theme toggle, as asked, and shows the
              active language as a two-letter code so it needs no icon. -->
         <!-- The flyout opens on click by itself; no command needed. -->
@@ -124,6 +130,95 @@
               <Button Content="{l:T Common.Cancel}" Command="{Binding CancelDeleteCommand}" />
               <Button Classes="danger" Content="{l:T Common.Continue}" Command="{Binding ConfirmDeleteCommand}" />
             </StackPanel>
+          </StackPanel>
+        </Border>
+      </Panel>
+
+      <!-- ================================================== About dialog -->
+      <Panel IsVisible="{Binding IsAboutOpen}">
+
+        <!-- Clicking the scrim dismisses, the way every other overlay in the app behaves. -->
+        <Border Background="{DynamicResource ScrimBrush}"
+                PointerPressed="OnAboutScrimPressed" />
+
+        <Border Classes="card fade-in" Width="470"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource SurfaceOverlay}"
+                BorderBrush="{DynamicResource BorderStrong}"
+                BoxShadow="0 24 64 0 #99000000">
+          <StackPanel>
+
+            <!-- Header: the mark, the name, and who wrote it. -->
+            <StackPanel Margin="30,30,30,0" Spacing="18">
+              <StackPanel Orientation="Horizontal" Spacing="16">
+                <Image Source="/Assets/dirstat-128.png" Width="56" Height="56"
+                       VerticalAlignment="Top" />
+                <StackPanel Spacing="4" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding AboutName}" FontSize="25" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <TextBlock Text="{l:T About.Version}" Classes="tertiary" FontSize="12" />
+                    <TextBlock Text="{Binding AboutVersion}" Classes="secondary"
+                               FontSize="12" FontWeight="SemiBold" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+
+              <TextBlock Text="{l:T About.Tagline}" Classes="secondary"
+                         TextWrapping="Wrap" LineHeight="20" />
+
+              <Border Classes="divider" />
+
+              <!-- The credit itself, given its own line rather than buried in a details list. -->
+              <StackPanel Spacing="5">
+                <TextBlock Text="{l:T About.MadeBy}" Classes="caption" />
+                <TextBlock Text="{Binding AboutAuthor}" FontSize="15.5" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentBase}" />
+              </StackPanel>
+
+              <StackPanel Spacing="9">
+                <Grid ColumnDefinitions="96,*">
+                  <TextBlock Grid.Column="0" Text="{l:T About.Licence}" Classes="tertiary" FontSize="12" />
+                  <TextBlock Grid.Column="1" Text="{l:T About.LicenceValue}" Classes="secondary"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+                <Grid ColumnDefinitions="96,*">
+                  <TextBlock Grid.Column="0" Text="{l:T About.BuiltWith}" Classes="tertiary" FontSize="12" />
+                  <TextBlock Grid.Column="1" Text="{Binding AboutFramework}" Classes="secondary"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+                <Grid ColumnDefinitions="96,*">
+                  <TextBlock Grid.Column="0" Text="{l:T About.System}" Classes="tertiary" FontSize="12" />
+                  <TextBlock Grid.Column="1" Text="{Binding AboutSystem}" Classes="secondary"
+                             FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+              </StackPanel>
+
+              <TextBlock Text="{l:T About.Thanks}" Classes="tertiary" FontSize="11.5"
+                         TextWrapping="Wrap" LineHeight="18" />
+            </StackPanel>
+
+            <!-- Footer: copyright on the left, actions on the right. -->
+            <Border Margin="0,26,0,0" Padding="30,16"
+                    Background="{DynamicResource SurfaceRaised}"
+                    BorderBrush="{DynamicResource BorderSubtle}"
+                    BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,10,10">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding AboutCopyright}" Classes="tertiary"
+                           FontSize="11" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9">
+                  <Button Classes="ghost" Command="{Binding CopyAboutDetailsCommand}"
+                          Content="{l:T About.Copy}"
+                          IsVisible="{Binding !AboutDetailsCopied}" />
+                  <Button Classes="ghost" IsEnabled="False"
+                          Content="{l:T About.Copied}"
+                          IsVisible="{Binding AboutDetailsCopied}" />
+                  <Button Classes="accent" Command="{Binding CloseAboutCommand}"
+                          Content="{l:T About.Close}" />
+                </StackPanel>
+              </Grid>
+            </Border>
           </StackPanel>
         </Border>
       </Panel>
