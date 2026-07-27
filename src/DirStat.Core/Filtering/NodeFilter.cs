@@ -24,6 +24,12 @@ public sealed class FilterCriteria
     /// <summary>Only these extensions, each including the leading dot. Empty means any.</summary>
     public HashSet<string> Extensions { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    private HashSet<string>.AlternateLookup<ReadOnlySpan<char>>? _extensionLookup;
+
+    /// <summary>Span-keyed view of <see cref="Extensions"/>, so matching allocates nothing.</summary>
+    internal HashSet<string>.AlternateLookup<ReadOnlySpan<char>> ExtensionLookup =>
+        _extensionLookup ??= Extensions.GetAlternateLookup<ReadOnlySpan<char>>();
+
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(NamePattern) &&
         MinSize is null && MaxSize is null &&
@@ -190,7 +196,8 @@ public static class NodeFilter
         if (criteria.MinSize is { } min && node.Size < min) return false;
         if (criteria.MaxSize is { } max && node.Size > max) return false;
 
-        if (criteria.Extensions.Count > 0 && !criteria.Extensions.Contains(node.Extension)) return false;
+        // Span lookup: this runs for every file in the scan on each filter pass.
+        if (criteria.Extensions.Count > 0 && !criteria.ExtensionLookup.Contains(node.ExtensionSpan)) return false;
 
         if (criteria.ModifiedAfterUtc is { } after &&
             (node.LastWriteUtcTicks == 0 || node.LastWriteUtc < after)) return false;

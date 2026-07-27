@@ -94,20 +94,31 @@ public sealed class FileNode
     }
 
     /// <summary>
-    /// Extension including the leading dot, lowercased, or <see cref="string.Empty"/>.
-    /// Directories and dotfiles such as <c>.gitignore</c> report no extension.
+    /// Extension including the leading dot, or an empty span. Directories and dotfiles such
+    /// as <c>.gitignore</c> report none.
     /// </summary>
-    public string Extension
+    /// <remarks>
+    /// Returns a span into <see cref="Name"/> rather than a new string. This is read once per
+    /// tile on every treemap render and once per file on every filter pass, so materialising
+    /// a string here would churn megabytes of garbage for no benefit.
+    /// </remarks>
+    public ReadOnlySpan<char> ExtensionSpan
     {
         get
         {
-            if (IsDirectory || IsSynthetic) return string.Empty;
+            if (IsDirectory || IsSynthetic) return default;
             var dot = Name.LastIndexOf('.');
             // A leading dot means a hidden file, not an extension.
-            if (dot <= 0 || dot == Name.Length - 1) return string.Empty;
-            return ExtensionPool.Intern(Name.AsSpan(dot).ToString());
+            if (dot <= 0 || dot == Name.Length - 1) return default;
+            return Name.AsSpan(dot);
         }
     }
+
+    /// <summary>
+    /// Extension as an interned, lowercased string. Prefer <see cref="ExtensionSpan"/> on hot
+    /// paths; use this only where a string is genuinely needed, such as a dictionary key.
+    /// </summary>
+    public string Extension => ExtensionPool.Intern(ExtensionSpan);
 
     /// <summary>Rebuilds the absolute path by walking up to the root.</summary>
     public string GetFullPath()
@@ -188,13 +199,22 @@ public sealed class FileNode
 /// </summary>
 internal static class ExtensionPool
 {
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Pool = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Pool =
+        new(StringComparer.OrdinalIgnoreCase);
 
-    public static string Intern(string ext)
+    /// <summary>
+    /// Alternate lookup keyed by span, so an already-pooled extension is found without
+    /// allocating a string first. Only a genuinely new extension allocates.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string>
+        .AlternateLookup<ReadOnlySpan<char>> SpanLookup = Pool.GetAlternateLookup<ReadOnlySpan<char>>();
+
+    public static string Intern(ReadOnlySpan<char> ext)
     {
-        if (ext.Length == 0) return string.Empty;
-        if (Pool.TryGetValue(ext, out var existing)) return existing;
-        var lowered = ext.ToLowerInvariant();
+        if (ext.IsEmpty) return string.Empty;
+        if (SpanLookup.TryGetValue(ext, out var existing)) return existing;
+
+        var lowered = ext.ToString().ToLowerInvariant();
         return Pool.GetOrAdd(lowered, lowered);
     }
 }

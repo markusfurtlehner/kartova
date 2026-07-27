@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The scanner touches platform filesystem behaviour directly — reparse points,
+        # allocation units, trash semantics — so the suite runs on all three.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  publish:
+    name: Publish ${{ matrix.rid }}
+    runs-on: ${{ matrix.host }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64,     host: windows-latest }
+          - { rid: win-arm64,   host: windows-latest }
+          - { rid: linux-x64,   host: ubuntu-latest }
+          - { rid: linux-arm64, host: ubuntu-latest }
+          - { rid: osx-x64,     host: macos-latest }
+          - { rid: osx-arm64,   host: macos-latest }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish self-contained
+        shell: bash
+        run: ./build/publish.sh ${{ matrix.rid }}
+
+      - name: Package
+        shell: bash
+        run: |
+          cd artifacts
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            # Ship the bundle, not the flat publish directory: Finder will not launch the latter.
+            tar -czf "DirStat-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}-bundle" DirStat.app
+          elif [[ "${{ matrix.rid }}" == win-* ]]; then
+            7z a "DirStat-${{ matrix.rid }}.zip" "./${{ matrix.rid }}/*"
+          else
+            tar -czf "DirStat-${{ matrix.rid }}.tar.gz" -C "${{ matrix.rid }}" .
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DirStat-${{ matrix.rid }}
+          path: |
+            artifacts/*.zip
+            artifacts/*.tar.gz
+          if-no-files-found: error

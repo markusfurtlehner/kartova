@@ -24,6 +24,13 @@
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
+  <!-- A shipped build carries no symbols, in every project, so the publish output is
+       exactly one file rather than an executable plus stray .pdb companions. -->
+  <PropertyGroup Condition="'$(PublishSelfContained)' == 'true'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
   <!-- Release builds are tuned for the scan hot path. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <Optimize>true</Optimize>

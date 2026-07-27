@@ -371,6 +371,7 @@ public sealed class TreemapRenderer
         if (node.HasFlag(NodeFlags.FreeSpace)) return FileTypeColors.FreeSpace;
         if (node.HasFlag(NodeFlags.Unknown)) return FileTypeColors.UnknownSpace;
         if (node.IsDirectory) return FileTypeColors.Directory;
-        return FileTypeColors.ForExtension(node.Extension);
+        // Span overload: this runs once per tile per render, so it must not allocate.
+        return FileTypeColors.ForExtension(node.ExtensionSpan);
     }
 }

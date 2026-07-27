@@ -16,6 +16,13 @@ public static class FileTypeColors
 {
     private static readonly ConcurrentDictionary<string, uint> Cache = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Span-keyed view of the cache. The treemap resolves a colour for every tile on every
+    /// render, so the common path must not allocate a string to do a dictionary lookup.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, uint>.AlternateLookup<ReadOnlySpan<char>>
+        CacheLookup = Cache.GetAlternateLookup<ReadOnlySpan<char>>();
+
     // Family anchors. Every curated extension resolves to a shade of one of these.
     private const uint Video = 0xFFFF6B6B;
     private const uint Image = 0xFFB07CFF;
@@ -33,10 +40,20 @@ public static class FileTypeColors
     private static readonly Dictionary<string, uint> Curated = BuildCurated();
 
     /// <summary>Packed 0xAARRGGBB colour for an extension, including the leading dot.</summary>
-    public static uint ForExtension(string extension)
+    public static uint ForExtension(string extension) => ForExtension(extension.AsSpan());
+
+    /// <summary>
+    /// Packed 0xAARRGGBB colour for an extension. Allocation-free once the extension has
+    /// been seen, which after the first few hundred files it always has.
+    /// </summary>
+    public static uint ForExtension(ReadOnlySpan<char> extension)
     {
-        if (string.IsNullOrEmpty(extension)) return Systemish;
-        return Cache.GetOrAdd(extension, static ext =>
+        if (extension.IsEmpty) return Systemish;
+        if (CacheLookup.TryGetValue(extension, out var cached)) return cached;
+
+        // First sighting of this extension: materialise the key and resolve it once.
+        var key = extension.ToString();
+        return Cache.GetOrAdd(key, static ext =>
             Curated.TryGetValue(ext, out var known) ? known : Derive(ext));
     }
 

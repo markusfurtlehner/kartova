@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using DirStat.App.Services;
@@ -17,10 +16,6 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avalonia registers a validator that surfaces DataAnnotations errors twice when
-            // CommunityToolkit.Mvvm is also in play. Removing it keeps validation single-sourced.
-            DisableDuplicateValidation();
-
             var settings = SettingsService.Load();
             RequestedThemeVariant = settings.Theme switch
             {
@@ -40,11 +35,5 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    private static void DisableDuplicateValidation()
-    {
-        foreach (var plugin in BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray())
-            BindingPlugins.DataValidators.Remove(plugin);
     }
 }
