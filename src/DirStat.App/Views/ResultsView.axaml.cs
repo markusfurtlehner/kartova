@@ -12,6 +12,9 @@ public partial class ResultsView : UserControl
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+
+        // Tunnel, because ListBoxItem handles the bubbling event and would swallow this.
+        AddHandler(PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -40,6 +43,30 @@ public partial class ResultsView : UserControl
         e.Handled = true;
     }
 
+    /// <summary>
+    /// Selects the row under a right-click before the context menu opens.
+    /// </summary>
+    /// <remarks>
+    /// A list does not select on the secondary button by default, so without this the menu
+    /// would act on whatever happened to be selected already — which is how a right-click
+    /// on one folder ends up deleting a different one.
+    /// </remarks>
+    private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed) return;
+        if (Tree is not { } tree) return;
+
+        // Walk up from whatever was hit to the row that owns it.
+        for (var control = e.Source as Control; control is not null; control = control.Parent as Control)
+        {
+            if (control is ListBox) break;               // clicked empty space below the rows
+            if (control.DataContext is not NodeViewModel row) continue;
+
+            tree.SelectedRow = row;
+            break;
+        }
+    }
+
     private void OnSortByName(object? sender, RoutedEventArgs e) => Tree?.SetSort(TreeSortKey.Name);
 
     private void OnSortBySize(object? sender, RoutedEventArgs e) => Tree?.SetSort(TreeSortKey.Size);
@@ -62,6 +89,18 @@ public partial class ResultsView : UserControl
         {
             case Key.F when e.KeyModifiers.HasFlag(KeyModifiers.Control):
                 this.FindControl<TextBox>("FilterBox")?.Focus();
+                e.Handled = true;
+                break;
+
+            // Ctrl+C inside the filter box must still copy the text being edited.
+            case Key.C when e.KeyModifiers.HasFlag(KeyModifiers.Control) && !typing:
+                model.CopyPathCommand.Execute(null);
+                e.Handled = true;
+                break;
+
+            // Enter drills into the selection from anywhere, matching the menu's hint.
+            case Key.Enter when !typing:
+                model.ZoomIntoCommand.Execute(model.SelectedNode);
                 e.Handled = true;
                 break;
 

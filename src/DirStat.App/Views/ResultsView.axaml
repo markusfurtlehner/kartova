@@ -98,8 +98,9 @@
       <!-- ================================== Directory tree ================================== -->
       <!-- A flat, virtualized list rather than a nested tree control: only expanded branches
            become rows, so a scan of millions of nodes still realises a screenful at a time. -->
-      <Border Grid.Column="0" Background="{DynamicResource SurfaceBase}"
-              DataContext="{Binding Tree}">
+      <!-- The pane keeps MainViewModel as its data context and reaches into Tree by path,
+           so the shared context menu can bind straight to the top-level commands. -->
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceBase}">
         <Grid RowDefinitions="Auto,Auto,*">
 
           <TextBlock Grid.Row="0" Classes="caption" Text="FOLDERS" Margin="14,11,0,7" />
@@ -107,22 +108,27 @@
           <!-- Sortable headers. Column widths mirror the row template exactly, and the
                right margin reserves the scrollbar gutter so headers stay above their data. -->
           <Grid Grid.Row="1" ColumnDefinitions="*,88,96,68" Margin="10,0,20,0" Height="26">
-            <Button Grid.Column="0" Classes="ghost col-header" Content="{Binding NameHeader}"
+            <Button Grid.Column="0" Classes="ghost col-header" Content="{Binding Tree.NameHeader}"
                     HorizontalContentAlignment="Left" Click="OnSortByName" />
-            <Button Grid.Column="1" Classes="ghost col-header" Content="{Binding SizeHeader}"
+            <Button Grid.Column="1" Classes="ghost col-header" Content="{Binding Tree.SizeHeader}"
                     HorizontalContentAlignment="Right" Click="OnSortBySize" />
             <TextBlock Grid.Column="2" Classes="caption" Text="SHARE"
                        VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            <Button Grid.Column="3" Classes="ghost col-header" Content="{Binding ItemsHeader}"
+            <Button Grid.Column="3" Classes="ghost col-header" Content="{Binding Tree.ItemsHeader}"
                     HorizontalContentAlignment="Right" Click="OnSortByItems" />
           </Grid>
 
           <ListBox Grid.Row="2" x:Name="TreeList"
-                   ItemsSource="{Binding Rows}"
-                   SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                   ItemsSource="{Binding Tree.Rows}"
+                   SelectedItem="{Binding Tree.SelectedRow, Mode=TwoWay}"
                    Background="Transparent" BorderThickness="0"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    DoubleTapped="OnTreeRowDoubleTapped">
+
+            <ListBox.ContextMenu>
+              <views:NodeContextMenu />
+            </ListBox.ContextMenu>
+
 
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:NodeViewModel">
@@ -198,19 +204,7 @@
                                 CushionShading="True"
                                 DirectoryFrames="True">
             <views:TreemapControl.ContextMenu>
-              <ContextMenu>
-                <MenuItem Header="Open" Command="{Binding OpenSelectedCommand}" />
-                <MenuItem Header="Show in file manager" Command="{Binding RevealSelectedCommand}" />
-                <MenuItem Header="Open terminal here" Command="{Binding OpenTerminalHereCommand}" />
-                <Separator />
-                <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
-                <MenuItem Header="Zoom into" Command="{Binding ZoomIntoCommand}"
-                          CommandParameter="{Binding SelectedNode}" />
-                <MenuItem Header="Rescan this folder" Command="{Binding RefreshSelectedCommand}" />
-                <Separator />
-                <MenuItem Header="Move to trash" Command="{Binding RequestDeleteToTrashCommand}" />
-                <MenuItem Header="Delete permanently..." Command="{Binding RequestDeletePermanentlyCommand}" />
-              </ContextMenu>
+              <views:NodeContextMenu />
             </views:TreemapControl.ContextMenu>
           </views:TreemapControl>
         </Grid>
