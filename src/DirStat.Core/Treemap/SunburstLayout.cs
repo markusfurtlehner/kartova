@@ -66,6 +66,18 @@ public sealed class SunburstOptions
     /// <summary>Fraction of the radius left empty at the centre, where the root label sits.</summary>
     public double HoleFraction { get; set; } = 0.16;
 
+    /// <summary>
+    /// A ring is drawn only if its segments cover at least this share of a full turn.
+    /// </summary>
+    /// <remarks>
+    /// One deep chain of narrow slices should not set the scale for the whole picture. On a
+    /// Windows directory the seventh ring covers well under a percent of the circle while
+    /// claiming a seventh of the radius, which shrinks the rings holding the other 99% for no
+    /// gain. Stopping where the rings stop carrying anything spends the radius on what can
+    /// actually be read.
+    /// </remarks>
+    public double MinimumRingCoverage { get; set; } = 0.05;
+
     /// <summary>Lighting for the shaded fill, matching the treemap's upper-left source.</summary>
     public double Ambient { get; set; } = 0.42;
 }
@@ -106,16 +118,32 @@ public static class SunburstLayout
 
         var hole = radius * options.HoleFraction;
 
-        // Divide the radius by how deep the tree actually goes, not by the cap. A three-level
-        // tree drawn in sevenths would leave most of the circle empty and the rings too thin
-        // to read, which is the opposite of what this view is for.
-        var effectiveDepth = Math.Clamp(MeasureDepth(root, options.MaxDepth), 1, options.MaxDepth);
-        var ringThickness = (radius - hole) / effectiveDepth;
-
-        var segments = new List<SunburstSegment>(1024);
+        // Angles first, radii second. A sweep depends only on a node's share of its parent, so
+        // the whole angular layout can be built without knowing how thick a ring will be. That
+        // ordering is what makes the fit exact: rather than predicting how deep the tree will
+        // draw and dividing the radius by the guess, this measures the depth actually emitted
+        // and divides by that. A shallow tree fills the circle and a deep one still ends at the
+        // rim, because the outermost ring is by construction the one the radius was cut for.
+        var slices = new List<Slice>(1024);
         var deepest = 0;
 
-        AddChildren(root, 0, Math.Tau, 1, hole, ringThickness, options, segments, ref deepest);
+        AddChildren(root, 0, Math.Tau, 1, options, slices, ref deepest);
+
+        // One number decides both how many rings are drawn and how thick they are. Deriving the
+        // two independently is what let the disc overflow: rings cut for a shallow tree were
+        // used to lay out a deep one, and the outermost ring landed several times past the rim.
+        var drawnDepth = LegibleDepth(slices, deepest, options.MinimumRingCoverage);
+        var ringThickness = (radius - hole) / drawnDepth;
+
+        var segments = new List<SunburstSegment>(slices.Count);
+        foreach (var slice in slices)
+        {
+            if (slice.Depth > drawnDepth) continue;
+
+            var inner = hole + (slice.Depth - 1) * ringThickness;
+            segments.Add(new SunburstSegment(
+                slice.Node, slice.StartAngle, slice.EndAngle, inner, inner + ringThickness, slice.Depth));
+        }
 
         return new SunburstModel
         {
@@ -127,44 +155,43 @@ public static class SunburstLayout
             CentreY = centreY,
             RingThickness = ringThickness,
             HoleRadius = hole,
-            MaxDepth = deepest,
+            MaxDepth = drawnDepth,
         };
     }
 
     /// <summary>
-    /// How many levels the tree actually has below the root, stopping at <paramref name="cap"/>.
+    /// The deepest ring still worth spending radius on: the last one whose segments cover at
+    /// least <paramref name="minimumCoverage"/> of a full turn.
     /// </summary>
     /// <remarks>
-    /// Only branches large enough to survive the sliver cull matter, so this follows the
-    /// largest child at each level rather than exploring everything — the deepest chain of
-    /// hair-thin slices would otherwise stretch the rings for segments nobody can see.
+    /// Coverage never increases with depth, since a child's sweep is a share of its parent's
+    /// and culling only removes, so the first ring below the threshold ends the disc and no
+    /// populated ring is ever stranded outside it.
     /// </remarks>
-    private static int MeasureDepth(FileNode root, int cap)
+    private static int LegibleDepth(List<Slice> slices, int deepest, double minimumCoverage)
     {
-        var depth = 0;
-        var node = root;
+        if (deepest <= 1) return 1;
 
-        while (depth < cap)
+        var covered = new double[deepest + 1];
+        foreach (var slice in slices) covered[slice.Depth] += slice.EndAngle - slice.StartAngle;
+
+        var depth = 1;
+        for (var d = 1; d <= deepest; d++)
         {
-            var children = node.Children;
-            if (children is null || children.Length == 0) break;
-
-            // Children arrive sorted by descending size, so the first is the widest slice.
-            var largest = children.FirstOrDefault(c => c.Size > 0 && !c.IsSynthetic);
-            if (largest is null) break;
-
-            depth++;
-            node = largest;
+            if (covered[d] / Math.Tau < minimumCoverage) break;
+            depth = d;
         }
 
         return depth;
     }
 
+    /// <summary>A segment with its angles settled but its radius not yet known.</summary>
+    private readonly record struct Slice(FileNode Node, double StartAngle, double EndAngle, int Depth);
+
     /// <summary>Distributes a node's children across the angular span it occupies.</summary>
     private static void AddChildren(
         FileNode node, double startAngle, double endAngle, int depth,
-        double hole, double ringThickness, SunburstOptions options,
-        List<SunburstSegment> segments, ref int deepest)
+        SunburstOptions options, List<Slice> slices, ref int deepest)
     {
         if (depth > options.MaxDepth) return;
 
@@ -172,10 +199,6 @@ public static class SunburstLayout
         if (children is null || children.Length == 0) return;
         if (node.Size <= 0) return;
 
-        if (depth > deepest) deepest = depth;
-
-        var inner = hole + (depth - 1) * ringThickness;
-        var outer = inner + ringThickness;
         var available = endAngle - startAngle;
         var cursor = startAngle;
 
@@ -191,10 +214,13 @@ public static class SunburstLayout
                 continue;
             }
 
-            segments.Add(new SunburstSegment(child, cursor, cursor + sweep, inner, outer, depth));
+            // Counted here rather than on entry, so a ring whose children were all culled does
+            // not claim a share of the radius it never draws in.
+            if (depth > deepest) deepest = depth;
 
-            AddChildren(child, cursor, cursor + sweep, depth + 1,
-                hole, ringThickness, options, segments, ref deepest);
+            slices.Add(new Slice(child, cursor, cursor + sweep, depth));
+
+            AddChildren(child, cursor, cursor + sweep, depth + 1, options, slices, ref deepest);
 
             cursor += sweep;
         }

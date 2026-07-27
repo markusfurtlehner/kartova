@@ -242,7 +242,7 @@ tests/DirStat.Core.Tests
 
 ```sh
 dotnet build                              # build everything
-dotnet test                               # 174 tests
+dotnet test                               # 181 tests
 dotnet run --project src/DirStat.App      # run it
 
 ./build/publish.sh                        # self-contained, host platform
@@ -256,8 +256,9 @@ The suite covers scan aggregation, cancellation, exclusions, symlink and hard-li
 volume enumeration, the filter query language, duplicate detection including folder matching
 and nested suppression, snapshot round-trips, comparison semantics, junk classification, size
 formatting, translation-catalogue parity, and the layout invariants for both charts: full
-coverage, containment, no overlap, and the pre-order emission the treemap renderer depends on
-to carry cushion surfaces down the tree.
+coverage, containment, no overlap, the sunburst ending exactly on its radius whatever shape of
+tree it is given, and the pre-order emission the treemap renderer depends on to carry cushion
+surfaces down the tree.
 
 ---
 

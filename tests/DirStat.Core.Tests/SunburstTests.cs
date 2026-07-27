@@ -125,6 +125,113 @@ public class SunburstTests
         Assert.All(model.Segments, s => Assert.True(s.Depth <= 5));
     }
 
+    /// <summary>
+    /// A tree whose largest child is shallow but whose smaller sibling runs deep.
+    /// </summary>
+    /// <remarks>
+    /// The shape that matters: sizing the rings by following the largest child alone reports
+    /// one level here while the layout actually draws seven, so the rings are cut for a disc
+    /// six times larger than the canvas and everything past the first is clipped away.
+    /// </remarks>
+    private static FileNode LopsidedTree()
+    {
+        var root = new FileNode("root", NodeFlags.Directory | NodeFlags.Root);
+
+        var big = new FileNode("big.bin") { Parent = root, Size = 10_000_000 };
+
+        var deep = new FileNode("deep", NodeFlags.Directory) { Parent = root, Size = 5_000_000 };
+        var cursor = deep;
+        for (var i = 0; i < 8; i++)
+        {
+            var child = new FileNode($"level{i}", NodeFlags.Directory) { Parent = cursor, Size = 5_000_000 };
+            cursor.Children = [child];
+            cursor = child;
+        }
+
+        root.Children = [big, deep];
+        root.Size = 15_000_000;
+        root.SortBySizeDescending();
+        return root;
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(600)]
+    [InlineData(1024)]
+    public void No_segment_reaches_outside_the_canvas(int size)
+    {
+        foreach (var root in new[] { NestedTree(), LopsidedTree() })
+        {
+            var model = SunburstLayout.Build(root, size, size);
+            var limit = Math.Min(model.CentreX, model.CentreY);
+
+            Assert.All(model.Segments, s =>
+                Assert.True(s.OuterRadius <= limit,
+                    $"segment at depth {s.Depth} reaches {s.OuterRadius:F1}, past the {limit:F1} half-canvas"));
+        }
+    }
+
+    [Fact]
+    public void The_outermost_ring_ends_exactly_at_the_radius()
+    {
+        // Shallow and deep alike: whatever depth is drawn, the rings are cut to fill the disc.
+        foreach (var root in new[] { NestedTree(), LopsidedTree() })
+        {
+            var model = SunburstLayout.Build(root, 600, 600);
+            var outermost = model.Segments.Max(s => s.OuterRadius);
+
+            Assert.Equal(600 / 2.0 * 0.86, outermost, precision: 2);
+        }
+    }
+
+    [Fact]
+    public void A_ring_that_carries_almost_nothing_does_not_claim_a_share_of_the_radius()
+    {
+        // One wide branch and a hair-thin chain trailing off underneath it. Drawing the chain
+        // to full depth would spend most of the radius on rings covering a sliver of the turn.
+        var root = new FileNode("root", NodeFlags.Directory | NodeFlags.Root);
+        var bulk = new FileNode("bulk.bin") { Parent = root, Size = 100_000_000 };
+
+        var thread = new FileNode("thread", NodeFlags.Directory) { Parent = root, Size = 1_000_000 };
+        var cursor = thread;
+        for (var i = 0; i < 6; i++)
+        {
+            var child = new FileNode($"n{i}", NodeFlags.Directory) { Parent = cursor, Size = 1_000_000 };
+            cursor.Children = [child];
+            cursor = child;
+        }
+
+        root.Children = [bulk, thread];
+        root.Size = 101_000_000;
+        root.SortBySizeDescending();
+
+        var model = SunburstLayout.Build(root, 600, 600);
+
+        // The thread is under 1% of the circle, so it should not set the scale for the disc.
+        Assert.True(model.MaxDepth <= 2, $"drew {model.MaxDepth} rings for a 1% branch");
+
+        // And the rings that are drawn still reach the rim exactly.
+        Assert.Equal(600 / 2.0 * 0.86, model.Segments.Max(s => s.OuterRadius), precision: 2);
+    }
+
+    [Fact]
+    public void A_deep_branch_that_carries_real_weight_is_still_drawn()
+    {
+        // The counterpart: a third of the circle running deep is worth the radius it costs.
+        var model = SunburstLayout.Build(LopsidedTree(), 600, 600);
+
+        Assert.True(model.MaxDepth >= 5, $"only drew {model.MaxDepth} rings for a 33% branch");
+    }
+
+    [Fact]
+    public void Ring_thickness_is_uniform_across_the_disc()
+    {
+        var model = SunburstLayout.Build(LopsidedTree(), 600, 600);
+
+        Assert.All(model.Segments, s =>
+            Assert.Equal(model.RingThickness, s.OuterRadius - s.InnerRadius, precision: 2));
+    }
+
     [Fact]
     public void Slivers_too_thin_to_see_are_dropped()
     {
