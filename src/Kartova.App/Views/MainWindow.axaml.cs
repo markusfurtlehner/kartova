@@ -25,29 +25,68 @@ public partial class MainWindow : Window
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
+    /// <summary>Width the macOS traffic lights occupy, plus breathing room.</summary>
+    private const double TrafficLightInset = 78;
+
     /// <summary>
     /// Chooses between a custom caption and the system one.
     /// </summary>
     /// <remarks>
-    /// Windows and macOS honour an extended client area, so the app draws its own title bar
-    /// and the shell looks the same on both. Linux window managers are not obliged to, and
-    /// several — WSLg among them — decorate the window regardless, which would leave two
-    /// stacked title bars. There, the system caption is kept and the app's own row degrades
-    /// to a header strip without window controls.
+    /// <para>
+    /// Windows gets the app's own caption: its managed chrome cannot be drawn over user
+    /// content, so an extended client area means drawing the buttons ourselves.
+    /// </para>
+    /// <para>
+    /// macOS gets the real thing. Traffic lights belong on the left, they are muscle memory,
+    /// and a Windows-style row of buttons on the right is the single clearest sign that an
+    /// application was ported rather than written for the platform. Asking for system chrome
+    /// also hands the window's corner rounding back to macOS, so it follows whatever the OS
+    /// does rather than whatever we guessed - which is the only way it stays right across
+    /// versions and user settings.
+    /// </para>
+    /// <para>
+    /// Linux window managers are not obliged to honour an extended client area, and several -
+    /// WSLg among them - decorate regardless, which would leave two stacked title bars. There
+    /// the system caption is kept and the app's own row degrades to a header strip.
+    /// </para>
     /// </remarks>
     private void ApplyPlatformChrome()
     {
         if (OperatingSystem.IsLinux())
         {
             SystemDecorations = SystemDecorations.Full;
-            if (this.FindControl<StackPanel>("WindowControls") is { } controls)
-                controls.IsVisible = false;
+            HideOwnWindowControls();
             return;
         }
 
         ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
         ExtendClientAreaTitleBarHeightHint = -1;
+
+        if (OperatingSystem.IsMacOS())
+        {
+            // PreferSystemChrome keeps the native traffic lights; the thick-title-bar hint
+            // drops them to sit centred against a taller caption row rather than riding high.
+            ExtendClientAreaChromeHints =
+                Avalonia.Platform.ExtendClientAreaChromeHints.PreferSystemChrome |
+                Avalonia.Platform.ExtendClientAreaChromeHints.OSXThickTitleBar;
+
+            HideOwnWindowControls();
+
+            // Shift the title and path clear of the traffic lights they would otherwise
+            // sit underneath.
+            if (this.FindControl<StackPanel>("TitleBarLeft") is { } left)
+                left.Margin = new Thickness(TrafficLightInset, 0, 0, 0);
+
+            return;
+        }
+
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+    }
+
+    private void HideOwnWindowControls()
+    {
+        if (this.FindControl<StackPanel>("WindowControls") is { } controls)
+            controls.IsVisible = false;
     }
 
     private void WireUpViewModel()
@@ -77,68 +116,62 @@ public partial class MainWindow : Window
             }
         }
 
-        ClampToPrimaryScreen();
-        CenterOnPrimaryScreen();
+        FitToPrimaryScreen();
     }
 
     /// <summary>
-    /// Shrinks the window to fit the screen it is about to open on.
+    /// Sizes the window to fit the screen it opens on, then centres it there.
     /// </summary>
     /// <remarks>
-    /// The default size suits a desktop monitor and the saved size came from whatever display
-    /// the app last ran on; neither is a promise about this one. A 1280x800 laptop or virtual
-    /// machine is smaller than the default in both directions, and a window larger than the
-    /// screen puts its own title bar and buttons out of reach with no obvious way to drag them
-    /// back - the kind of first impression that gets an application deleted.
+    /// <para>
+    /// Size and position are settled together on purpose. The default size suits a desktop
+    /// monitor and a saved size came from whatever display the app last ran on; neither is a
+    /// promise about this one. A 1280x800 laptop or virtual machine is smaller than the
+    /// default in both directions, and a window larger than the screen puts its own title bar
+    /// out of reach with no obvious way to drag it back.
+    /// </para>
+    /// <para>
+    /// Centring cannot read <c>ClientSize</c> to do this, because that still reports the size
+    /// from before the clamp - the layout pass has not run yet - which placed a shrunk window
+    /// hard against the left edge.
+    /// </para>
+    /// <para>
+    /// <see cref="WindowStartupLocation.CenterScreen"/> is not used because it centres on the
+    /// screen the platform nominates, and on X11 that is the whole virtual desktop. With
+    /// several monitors the window lands in the centre of their combined bounding box, which
+    /// can be a different monitor entirely, or - where a monitor sits above or left of the
+    /// primary and the layout has a negative origin - somewhere the user never looks. That
+    /// reads as the app hanging: a taskbar entry and no visible window.
+    /// </para>
     /// </remarks>
-    private void ClampToPrimaryScreen()
+    private void FitToPrimaryScreen()
     {
         var screens = Screens;
         if (screens is null || screens.ScreenCount == 0) return;
 
         var target = screens.Primary ?? screens.All[0];
+        var area = target.WorkingArea;
         var scaling = target.Scaling <= 0 ? 1.0 : target.Scaling;
 
         // WorkingArea leaves out the menu bar, dock and taskbar, and is in physical pixels
         // while Width and Height are device-independent.
-        var availableWidth = target.WorkingArea.Width / scaling;
-        var availableHeight = target.WorkingArea.Height / scaling;
+        var availableWidth = area.Width / scaling;
+        var availableHeight = area.Height / scaling;
         if (availableWidth <= 0 || availableHeight <= 0) return;
 
         // A margin so the window reads as placed rather than wedged against the edges.
         const double margin = 0.96;
 
-        Width = Math.Min(Width, availableWidth * margin);
-        Height = Math.Min(Height, availableHeight * margin);
-    }
+        // The minimum still wins, so fold it in here rather than let it surprise the centring.
+        var width = Math.Max(Math.Min(Width, availableWidth * margin), MinWidth);
+        var height = Math.Max(Math.Min(Height, availableHeight * margin), MinHeight);
 
-    /// <summary>
-    /// Places the window in the middle of the primary monitor.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="WindowStartupLocation.CenterScreen"/> centres on the screen the platform
-    /// nominates, and on X11 that is the whole virtual desktop rather than one monitor. With
-    /// several monitors the window lands at the centre of their combined bounding box, which
-    /// can be a different monitor entirely — or, where a monitor sits above or left of the
-    /// primary and the layout has a negative origin, somewhere the user never looks. The
-    /// symptom is unpleasant, because the app appears to launch and then hang: there is a
-    /// taskbar entry and no visible window. Centring explicitly on the primary is what people
-    /// expect on every platform, so it is done here rather than left to the toolkit.
-    /// </remarks>
-    private void CenterOnPrimaryScreen()
-    {
-        var screens = Screens;
-        if (screens is null || screens.ScreenCount == 0) return;
-
-        var size = PixelSize.FromSize(ClientSize, RenderScaling);
-        if (size.Width <= 0 || size.Height <= 0) return;
-
-        var target = screens.Primary ?? screens.All[0];
-        var area = target.WorkingArea;
+        Width = width;
+        Height = height;
 
         Position = new PixelPoint(
-            area.X + Math.Max(0, (area.Width - size.Width) / 2),
-            area.Y + Math.Max(0, (area.Height - size.Height) / 2));
+            area.X + (int)Math.Max(0, (area.Width - width * scaling) / 2),
+            area.Y + (int)Math.Max(0, (area.Height - height * scaling) / 2));
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
