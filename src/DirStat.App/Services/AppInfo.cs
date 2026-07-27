@@ -17,6 +17,15 @@ public static class AppInfo
     public const string Author = "Markus Furtlehner";
     public const string Licence = "MIT";
 
+    /// <summary>
+    /// Where the project lives. Kept here so a rename is one edit rather than a hunt.
+    /// </summary>
+    public const string RepositoryUrl = "https://github.com/markusfurtlehner/dirstat";
+
+    /// <summary>The repository address without the scheme, which is what a link should show.</summary>
+    public static string RepositoryLabel { get; } =
+        RepositoryUrl.Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Three-part version, without the assembly's trailing revision field.</summary>
     public static string Version { get; } =
         typeof(AppInfo).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
@@ -39,9 +48,10 @@ public static class AppInfo
         $"""
          {Name} {Version}
          {Copyright}
-         Licence:   {Licence}
-         Runtime:   {Framework}
-         System:    {System}
+         Licence:    {Licence}
+         Project:    {RepositoryUrl}
+         Runtime:    {Framework}
+         System:     {System}
          Processors: {Environment.ProcessorCount}
          """;
 }

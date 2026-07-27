@@ -1041,6 +1041,14 @@ public sealed partial class MainViewModel : ObservableObject
     public string AboutFramework => AppInfo.Framework;
     public string AboutSystem => AppInfo.System;
     public string AboutLicence => AppInfo.Licence;
+    public string AboutRepositoryLabel => AppInfo.RepositoryLabel;
+
+    [RelayCommand]
+    private void OpenRepository()
+    {
+        var result = ShellService.OpenUrl(AppInfo.RepositoryUrl);
+        if (!result.Success) StatusMessage = result.Message ?? string.Empty;
+    }
 
     [RelayCommand]
     private void ShowAbout()

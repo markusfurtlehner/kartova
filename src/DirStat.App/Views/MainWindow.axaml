@@ -191,6 +191,16 @@
                   <TextBlock Grid.Column="1" Text="{Binding AboutSystem}" Classes="secondary"
                              FontSize="12" TextWrapping="Wrap" />
                 </Grid>
+                <Grid ColumnDefinitions="96,*">
+                  <TextBlock Grid.Column="0" Text="{l:T About.Project}" Classes="tertiary" FontSize="12" />
+                  <Button Grid.Column="1" Classes="link" Padding="0"
+                          HorizontalAlignment="Left"
+                          Command="{Binding OpenRepositoryCommand}"
+                          ToolTip.Tip="{l:T About.OpenProject}">
+                    <TextBlock Text="{Binding AboutRepositoryLabel}" FontSize="12"
+                               Foreground="{DynamicResource AccentBase}" />
+                  </Button>
+                </Grid>
               </StackPanel>
 
               <TextBlock Text="{l:T About.Thanks}" Classes="tertiary" FontSize="11.5"

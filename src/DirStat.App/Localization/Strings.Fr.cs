@@ -38,6 +38,8 @@ public static partial class Strings
         ["About.LicenceValue"] = "MIT — libre d'utilisation, de modification et de partage.",
         ["About.BuiltWith"] = "Développé avec",
         ["About.System"] = "Système",
+        ["About.Project"] = "Projet",
+        ["About.OpenProject"] = "Ouvrir la page du projet dans le navigateur",
         ["About.Thanks"] = "Merci à WinDirStat, QDirStat et SpaceSniffer, qui ont montré ce qu'un tel outil doit faire.",
         ["About.Copy"] = "Copier les détails",
         ["About.Copied"] = "Copié",

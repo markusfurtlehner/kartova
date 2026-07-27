@@ -53,6 +53,38 @@ public static class ShellService
         }
     }
 
+    /// <summary>Opens a web address in the default browser.</summary>
+    /// <remarks>
+    /// Separate from <see cref="Open"/> because that one requires the target to exist on disk.
+    /// Only http and https are honoured: handing an arbitrary scheme to the shell is how a
+    /// string turns into a launched program, and nothing here needs more than the web.
+    /// </remarks>
+    public static ShellResult OpenUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            return ShellResult.Failed($"Not a web address: {url}");
+        }
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+            else if (OperatingSystem.IsMacOS())
+                Launch("open", [uri.AbsoluteUri]);
+            else
+                Launch("xdg-open", [uri.AbsoluteUri]);
+
+            return ShellResult.Ok();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                       or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return ShellResult.Failed($"Could not open: {e.Message}");
+        }
+    }
+
     /// <summary>Shows the item in the platform file manager, selected where possible.</summary>
     public static ShellResult Reveal(string path)
     {
