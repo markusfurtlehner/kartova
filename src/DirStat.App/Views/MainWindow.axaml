@@ -69,6 +69,9 @@
       <views:ResultsView
         IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Results}" />
 
+      <views:DuplicatesView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Duplicates}" />
+
       <!-- ================================================ Confirm dialog -->
       <Panel IsVisible="{Binding IsConfirmingDelete}">
         <Border Background="{DynamicResource ScrimBrush}" />
@@ -83,7 +86,7 @@
                        TextWrapping="Wrap" LineHeight="20" />
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
               <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
-              <Button Classes="danger" Content="Delete" Command="{Binding ConfirmDeleteCommand}" />
+              <Button Classes="danger" Content="Continue" Command="{Binding ConfirmDeleteCommand}" />
             </StackPanel>
           </StackPanel>
         </Border>

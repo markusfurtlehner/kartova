@@ -1,0 +1,297 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DirStat.App.ViewModels"
+             xmlns:views="using:DirStat.App.Views"
+             mc:Ignorable="d"
+             x:Class="DirStat.App.Views.DuplicatesView"
+             x:DataType="vm:MainViewModel">
+
+  <UserControl.Resources>
+    <StreamGeometry x:Key="IconBack2">M 10,2 L 4,8 L 10,14</StreamGeometry>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,*,Auto" DataContext="{Binding Duplicates}">
+
+    <!-- ================================================= Toolbar ================================================= -->
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1"
+            Padding="14,9">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+
+        <Button Grid.Column="0" Classes="ghost" Padding="9,6"
+                Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BackToResultsCommand}"
+                ToolTip.Tip="Back to the scan">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconBack2}" Stroke="{DynamicResource TextSecondary}"
+                  StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                  Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
+            <TextBlock Text="Back" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <Border Grid.Column="1" Width="1" Height="20" Margin="8,0"
+                Background="{DynamicResource BorderSubtle}" />
+
+        <!-- Files / Folders tabs, shown once there is something to switch between -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                    VerticalAlignment="Center" IsVisible="{Binding HasSearched}">
+          <Button Classes="tab" Content="{Binding FileTabText}"
+                  Command="{Binding ShowFileTabCommand}"
+                  Classes.active="{Binding !ShowFolders}" />
+          <Button Classes="tab" Content="{Binding FolderTabText}"
+                  Command="{Binding ShowFolderTabCommand}"
+                  Classes.active="{Binding ShowFolders}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+          <Button Classes="ghost" Content="Expand all" FontSize="12" Padding="9,5"
+                  Command="{Binding ExpandAllCommand}" IsVisible="{Binding HasSearched}" />
+          <Button Classes="ghost" Content="Collapse" FontSize="12" Padding="9,5"
+                  Command="{Binding CollapseAllCommand}" IsVisible="{Binding HasSearched}" />
+          <Button Classes="accent" Content="Search again" Padding="14,7"
+                  Command="{Binding SearchCommand}"
+                  IsVisible="{Binding HasSearched}"
+                  IsEnabled="{Binding !IsSearching}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ================================================== Body ================================================== -->
+    <Panel Grid.Row="1">
+
+      <!-- ================================== Start screen ================================== -->
+      <ScrollViewer IsVisible="{Binding !HasSearched}">
+        <Border Background="{DynamicResource HeroGradient}" Padding="40">
+          <StackPanel MaxWidth="680" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="26">
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="display" Text="Find what you have twice" />
+              <TextBlock Classes="secondary" TextWrapping="Wrap" LineHeight="21"
+                         Text="DirStat compares contents, not names. Two files match only when every byte does, and two folders match only when their entire trees do." />
+            </StackPanel>
+
+            <Border Classes="card" Padding="22">
+              <StackPanel Spacing="18">
+                <StackPanel Spacing="7">
+                  <TextBlock Classes="caption" Text="IGNORE FILES SMALLER THAN" />
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Minimum="1" Maximum="1024" Width="320"
+                            Value="{Binding MinimumSizeKb}" />
+                    <TextBlock VerticalAlignment="Center" FontWeight="Medium"
+                               Text="{Binding MinimumSizeKb, StringFormat=' {0} KiB'}" />
+                  </StackPanel>
+                  <TextBlock Classes="tertiary" FontSize="11.5"
+                             Text="Small files duplicate constantly and reclaim almost nothing." />
+                </StackPanel>
+
+                <CheckBox IsChecked="{Binding VerifyByteForByte}"
+                          Content="Verify byte for byte after matching" />
+                <TextBlock Classes="tertiary" FontSize="11.5" Margin="26,-12,0,0" TextWrapping="Wrap"
+                           Text="Reads every confirmed duplicate a second time. The 128-bit content hash already makes a false match vanishingly unlikely." />
+              </StackPanel>
+            </Border>
+
+            <Button Classes="accent" Padding="22,11" HorizontalAlignment="Left"
+                    Command="{Binding SearchCommand}" Content="Find duplicates" />
+
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- ==================================== Searching ==================================== -->
+      <Border IsVisible="{Binding IsSearching}" Background="{DynamicResource HeroGradient}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="620" Spacing="26">
+          <StackPanel Spacing="8" HorizontalAlignment="Center">
+            <TextBlock Classes="title" Text="{Binding PhaseText}" HorizontalAlignment="Center" />
+            <TextBlock Classes="tertiary" Text="{Binding ProgressDetailText}"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+
+          <ProgressBar Height="4" CornerRadius="2"
+                       Minimum="0" Maximum="1" Value="{Binding ProgressFraction}"
+                       IsIndeterminate="{Binding IsProgressIndeterminate}"
+                       Foreground="{DynamicResource AccentBase}"
+                       Background="{DynamicResource SurfaceRaised}" />
+
+          <TextBlock Classes="tertiary mono" FontSize="11" TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Center" Text="{Binding CurrentPath}" />
+
+          <Button Content="Cancel" HorizontalAlignment="Center" Padding="20,8"
+                  Command="{Binding CancelSearchCommand}" />
+        </StackPanel>
+      </Border>
+
+      <!-- ===================================== Results ===================================== -->
+      <Grid RowDefinitions="Auto,*"
+            IsVisible="{Binding HasSearched}">
+
+        <Border Grid.Row="0" Padding="16,10" Background="{DynamicResource SurfaceBase}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
+          <TextBlock Text="{Binding SummaryText}" Classes="secondary" FontSize="12.5" />
+        </Border>
+
+        <!-- Nothing found -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Spacing="10" IsVisible="{Binding IsEmpty}" MaxWidth="440">
+          <TextBlock Classes="title" Text="Nothing duplicated here" HorizontalAlignment="Center" />
+          <TextBlock Classes="tertiary" Text="{Binding EmptyMessage}"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsEmpty}">
+          <ItemsControl ItemsSource="{Binding Groups}" Margin="12,10,12,16">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DuplicateGroupViewModel">
+
+                <Border Classes="panel" Margin="0,0,0,8" Padding="0"
+                        Background="{DynamicResource SurfaceRaised}">
+                  <StackPanel>
+
+                    <!-- Group header: click anywhere to expand -->
+                    <Button Classes="group-header" Command="{Binding ToggleCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="14,11">
+
+                        <Path Grid.Column="0" Width="8" Height="8" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiary}" VerticalAlignment="Center"
+                              Margin="0,0,10,0"
+                              Data="{Binding IsExpanded, Converter={x:Static views:Converters.Chevron}}" />
+
+                        <Border Grid.Column="1" Width="10" Height="10" CornerRadius="3"
+                                Background="{Binding Swatch}" VerticalAlignment="Center"
+                                Margin="0,0,11,0" />
+
+                        <StackPanel Grid.Column="2" Spacing="2">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="tertiary" FontSize="11.5"
+                                     Text="{Binding CopiesText}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="3" Spacing="2" Margin="14,0"
+                                    HorizontalAlignment="Right">
+                          <TextBlock Text="{Binding WastedText}" Classes="numeric"
+                                     FontWeight="SemiBold"
+                                     Foreground="{DynamicResource WarningBase}" />
+                          <TextBlock Text="recoverable" Classes="tertiary numeric" FontSize="11" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="4" Text="{Binding SelectedText}"
+                                   Classes="numeric" FontSize="11.5" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentBase}"
+                                   MinWidth="70" />
+                      </Grid>
+                    </Button>
+
+                    <!-- Copies -->
+                    <ItemsControl ItemsSource="{Binding Copies}" IsVisible="{Binding IsExpanded}"
+                                  Margin="0,0,0,6">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DuplicateCopyViewModel">
+                          <Border Background="{DynamicResource SurfaceBase}"
+                                  Margin="14,0,14,4" CornerRadius="6" Padding="12,8"
+                                  ToolTip.Tip="{Binding Tooltip}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                              <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                        VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                              <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{Binding Location}" FontSize="12"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding ContentsText}" Classes="tertiary"
+                                           FontSize="11"
+                                           IsVisible="{Binding ContentsText, Converter={x:Static views:Converters.HasText}}" />
+                              </StackPanel>
+
+                              <TextBlock Grid.Column="2" Text="{Binding ModifiedText}"
+                                         Classes="numeric tertiary" FontSize="11.5"
+                                         VerticalAlignment="Center" Margin="12,0" />
+
+                              <TextBlock Grid.Column="3" Text="{Binding SizeText}"
+                                         Classes="numeric secondary" FontSize="11.5"
+                                         VerticalAlignment="Center" MinWidth="72" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Panel>
+
+    <!-- ================================================ Action bar ================================================ -->
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0"
+            Padding="14,9"
+            IsVisible="{Binding HasSearched}">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+          <TextBlock Text="Keep" Classes="tertiary" VerticalAlignment="Center" FontSize="12" />
+          <Button Classes="ghost" Content="Oldest" FontSize="12" Padding="10,5"
+                  Command="{Binding KeepOldestCommand}"
+                  ToolTip.Tip="Tick every copy except the oldest in each group" />
+          <Button Classes="ghost" Content="Newest" FontSize="12" Padding="10,5"
+                  Command="{Binding KeepNewestCommand}"
+                  ToolTip.Tip="Tick every copy except the newest in each group" />
+          <Button Classes="ghost" Content="Shortest path" FontSize="12" Padding="10,5"
+                  Command="{Binding KeepShortestPathCommand}"
+                  ToolTip.Tip="Tick every copy except the one nearest the root" />
+          <Button Classes="ghost" Content="Clear" FontSize="12" Padding="10,5"
+                  Command="{Binding ClearSelectionCommand}" />
+        </StackPanel>
+
+        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}"
+                   Foreground="{DynamicResource AccentBase}" FontSize="11.5"
+                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding SelectedText}" Classes="secondary" FontSize="12"
+                     VerticalAlignment="Center" />
+          <Button Classes="danger" Padding="16,7" Content="Move selected to trash"
+                  Command="{Binding DeleteSelectedCommand}"
+                  IsEnabled="{Binding HasSelection}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="Button.tab">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiary}" />
+      <Setter Property="Padding" Value="14,6" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+    </Style>
+    <Style Selector="Button.tab.active">
+      <Setter Property="Background" Value="{DynamicResource AccentMuted}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.tab.active /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentMuted}" />
+    </Style>
+
+    <Style Selector="Button.group-header">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
+    </Style>
+    <Style Selector="Button.group-header:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+  </UserControl.Styles>
+
+</UserControl>

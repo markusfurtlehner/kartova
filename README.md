@@ -78,6 +78,29 @@ click rather than a typed query.
 Right-click anything for open, reveal in file manager, open terminal here, copy path,
 rescan, and delete.
 
+### Finding duplicates
+
+**Duplicates** in the toolbar searches whatever you scanned for files — and whole folders —
+that you have more than one copy of. It compares contents, not names: two files match only
+when every byte does, and two folders match only when their entire trees do.
+
+Results are grouped and ordered by how much space you would get back. Expand a group to see
+where each copy lives, then tick the ones to remove, or apply a rule to every group at once:
+keep the oldest, the newest, or the copy nearest the root. One copy of each group is always
+kept — ticking every copy is not possible, because that would delete the data rather than
+de-duplicate it. Removal goes to the trash, and the scan updates itself afterwards.
+
+When two folders match, only the outermost pair is listed. Every subdirectory inside them
+matches too, and listing all of those would bury the one finding worth acting on. Files
+inside a reported duplicate folder are likewise not listed again — they go with the folder,
+so counting them separately would double-count the space.
+
+Reading every byte on a volume would cost far more than the scan itself, so the search is
+staged. Files are grouped by size first, which is free because the scan already measured
+them and two files of different length cannot match; then a 16 KB prefix is hashed, since
+files that differ tend to differ early; only what is still ambiguous is read in full. A tree
+of uniquely-sized files is answered without a single read.
+
 ### Filtering
 
 The filter box takes a small query language. Terms combine as an intersection.
@@ -135,7 +158,8 @@ src/DirStat.App         Avalonia views, view models, theming, shell integration
 tests/DirStat.Core.Tests
 ```
 
-`Core` has no UI dependency and carries the whole test suite.
+`Core` has no UI dependency and carries the whole test suite. The duplicate finder lives
+there too, so it is testable without a window.
 
 A few decisions that shape everything else:
 
@@ -164,12 +188,13 @@ underlying arrays untouched.
 
 ```sh
 dotnet build                                    # build everything
-dotnet test                                     # 75 tests
+dotnet test                                     # 111 tests
 dotnet run --project src/DirStat.App            # run it
 ```
 
 The test suite covers scan aggregation, cancellation, exclusions, symlink handling,
-hard-link dedup, the filter query language, size formatting, and the treemap layout
+hard-link dedup, volume enumeration, the filter query language, size formatting, duplicate
+detection including folder matching and nested suppression, and the treemap layout
 invariants: full coverage, containment, no overlap, and the pre-order emission the renderer
 depends on to carry cushion surfaces down the tree.
 

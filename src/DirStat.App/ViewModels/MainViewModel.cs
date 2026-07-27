@@ -14,6 +14,7 @@ public enum AppScreen
     Volumes,
     Scanning,
     Results,
+    Duplicates,
 }
 
 /// <summary>Root view model. Owns screen state, the scan lifecycle, and cross-pane selection.</summary>
@@ -32,7 +33,16 @@ public sealed partial class MainViewModel : ObservableObject
         SizeFormatter.UseBinaryUnits = settings.UseBinaryUnits;
         LoadVolumes();
         RefreshRecentPaths();
+
+        // The duplicate search runs over the tree the scan already produced, so it needs a
+        // way to reach it, and a way to raise the same confirmation the main screen uses.
+        Duplicates.GetScanRoot = () => _unfilteredRoot;
+        Duplicates.ConfirmAsync = RequestConfirmationAsync;
+        Duplicates.CopiesDeleted = OnDuplicatesDeletedAsync;
     }
+
+    /// <summary>The duplicate finder screen.</summary>
+    public DuplicatesViewModel Duplicates { get; } = new();
 
     public AppSettings Settings { get; }
 
@@ -240,6 +250,9 @@ public sealed partial class MainViewModel : ObservableObject
         _unfilteredRoot = result.Root;
 
         BuildTree(result.Root);
+
+        // A fresh scan invalidates any previous duplicate search.
+        Duplicates.Reset();
 
         SelectedExtension = null;
         Extensions.Clear();
@@ -489,38 +502,72 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool _pendingPermanentDelete;
 
-    [RelayCommand]
-    private void RequestDeleteToTrash() => RequestDelete(permanent: false);
+    /// <summary>Completes when the user answers the confirmation overlay.</summary>
+    private TaskCompletionSource<bool>? _confirmation;
+
+    /// <summary>
+    /// Shows the confirmation overlay and waits for an answer.
+    /// </summary>
+    /// <remarks>
+    /// Exposed so the duplicate finder can raise the same dialog rather than growing its
+    /// own. Destructive actions should look identical wherever they are triggered from.
+    /// </remarks>
+    public Task<bool> RequestConfirmationAsync(string title, string body)
+    {
+        // A second request supersedes the first rather than leaving it hanging forever.
+        _confirmation?.TrySetResult(false);
+
+        ConfirmTitle = title;
+        ConfirmBody = body;
+        _confirmation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        IsConfirmingDelete = true;
+
+        return _confirmation.Task;
+    }
 
     [RelayCommand]
-    private void RequestDeletePermanently() => RequestDelete(permanent: true);
+    private Task RequestDeleteToTrashAsync() => RequestDeleteAsync(permanent: false);
 
-    private void RequestDelete(bool permanent)
+    [RelayCommand]
+    private Task RequestDeletePermanentlyAsync() => RequestDeleteAsync(permanent: true);
+
+    private async Task RequestDeleteAsync(bool permanent)
     {
         if (SelectedNode is not { } node || node.IsSynthetic || node.IsRoot) return;
 
         _pendingPermanentDelete = permanent;
-        ConfirmTitle = permanent ? "Delete permanently?" : "Move to trash?";
 
         var what = node.IsDirectory
             ? $"{node.Name} and its {SizeFormatter.FormatCount(node.FileCount)} files"
             : node.Name;
 
-        ConfirmBody = permanent
-            ? $"{what} will be erased immediately. This cannot be undone.\n\n{node.GetFullPath()}"
-            : $"{what} will be moved to the trash.\n\n{node.GetFullPath()}";
+        var confirmed = await RequestConfirmationAsync(
+            permanent ? "Delete permanently?" : "Move to trash?",
+            permanent
+                ? $"{what} will be erased immediately. This cannot be undone.\n\n{node.GetFullPath()}"
+                : $"{what} will be moved to the trash.\n\n{node.GetFullPath()}");
 
-        IsConfirmingDelete = true;
+        if (confirmed) await DeleteConfirmedAsync();
     }
 
     [RelayCommand]
-    private void CancelDelete() => IsConfirmingDelete = false;
-
-    [RelayCommand]
-    private async Task ConfirmDeleteAsync()
+    private void CancelDelete()
     {
         IsConfirmingDelete = false;
+        _confirmation?.TrySetResult(false);
+        _confirmation = null;
+    }
 
+    [RelayCommand]
+    private void ConfirmDelete()
+    {
+        IsConfirmingDelete = false;
+        _confirmation?.TrySetResult(true);
+        _confirmation = null;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
         if (SelectedNode is not { } node || node.IsSynthetic || node.IsRoot) return;
 
         var path = node.GetFullPath();
@@ -540,6 +587,53 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Re-walk the containing folder so the tree and the map agree with the disk again.
         if (parent is not null) await RefreshNodeAsync(parent);
+    }
+
+    // ---------------------------------------------------------- duplicates
+
+    [RelayCommand]
+    private void ShowDuplicates()
+    {
+        if (_unfilteredRoot is null) return;
+        Screen = AppScreen.Duplicates;
+    }
+
+    [RelayCommand]
+    private void BackToResults() => Screen = AppScreen.Results;
+
+    /// <summary>
+    /// Brings the scan back in line with the disk after duplicates are removed.
+    /// </summary>
+    /// <remarks>
+    /// Rescans the containing folders rather than the whole tree: the removals are scattered,
+    /// but each one only changes its own parent, and rewalking a volume to reflect a handful
+    /// of deletions would be absurd.
+    /// </remarks>
+    private async Task OnDuplicatesDeletedAsync(IReadOnlyList<FileNode> removed)
+    {
+        if (removed.Count == 0 || _unfilteredRoot is null) return;
+
+        var parents = new HashSet<FileNode>();
+        foreach (var node in removed)
+            if (node.Parent is { } parent && IsStillAttached(parent))
+                parents.Add(parent);
+
+        // Refresh only the outermost affected folders; nested ones come along for free.
+        foreach (var parent in parents.Where(p => !parents.Any(other =>
+                     !ReferenceEquals(other, p) && IsDescendantOf(p, other))))
+        {
+            await RefreshNodeAsync(parent);
+        }
+
+        StatusMessage = $"Recovered space from {SizeFormatter.FormatCount(removed.Count)} duplicates.";
+    }
+
+    private static bool IsDescendantOf(FileNode node, FileNode ancestor)
+    {
+        for (var current = node.Parent; current is not null; current = current.Parent)
+            if (ReferenceEquals(current, ancestor))
+                return true;
+        return false;
     }
 
     // ------------------------------------------------------------- refresh
