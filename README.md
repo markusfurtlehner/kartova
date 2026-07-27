@@ -32,11 +32,41 @@ to install.
 | Platform | File | Notes |
 |---|---|---|
 | Windows | `Kartova.exe` | x64 and arm64 |
-| macOS | `Kartova.app` | x64 and arm64. Unsigned — first launch needs right-click → Open |
+| macOS | `Kartova.app` | x64 and arm64 |
 | Linux | `Kartova` | x64 and arm64. Needs `libX11`, `libICE`, `libSM`, `fontconfig` — present on every desktop install |
 
 On Linux Kartova needs a desktop session; if `DISPLAY` and `WAYLAND_DISPLAY` are both unset it
 says so and exits rather than sitting there showing nothing.
+
+### The unsigned-binary warning
+
+The builds are not code-signed yet, so both desktop platforms will warn you the first time.
+This is expected, and it is worth knowing what the warning does and does not mean: it says the
+publisher could not be verified, not that anything was found wrong with the file.
+
+**Windows** shows *"Windows protected your PC"* from SmartScreen. Choose **More info**, then
+**Run anyway**.
+
+**macOS** refuses a double-click. **Right-click the app → Open**, then confirm — you only have
+to do this once. From the terminal, `xattr -d com.apple.quarantine /path/to/Kartova.app` has
+the same effect.
+
+Verify what you downloaded against `SHA256SUMS.txt` on the release. That proves the file
+arrived intact and matches what was published, which is the part a signature would not tell
+you anyway:
+
+```sh
+sha256sum -c SHA256SUMS.txt --ignore-missing     # Linux
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing # macOS
+```
+
+```powershell
+Get-FileHash .\Kartova-win-x64.zip -Algorithm SHA256   # Windows, compare by eye
+```
+
+Signing is planned: [SignPath Foundation](https://signpath.org/) provides free certificates to
+open-source projects, which covers Windows. macOS notarization needs a paid Apple Developer
+account, so that one may take longer.
 
 ---
 
