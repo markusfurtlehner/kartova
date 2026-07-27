@@ -225,14 +225,23 @@ public static class NativeFs
             }
             else
             {
-                // f_frsize is the meaningful allocation unit on Unix.
+                // struct statvfs opens with two unsigned longs on every 64-bit Unix we ship
+                // for: f_bsize at 0, then f_frsize at 8.
+                //
+                // f_frsize is the allocation unit; f_bsize is only a preferred I/O size, and
+                // on Darwin the two differ wildly - APFS reports f_bsize as 1 MiB and f_frsize
+                // as 4 KiB. Reading f_bsize there rounded every file up to a megabyte, so a
+                // folder of a hundred small files claimed 100 MiB instead of 400 KiB.
                 var buf = new byte[512];
                 if (Libc.statvfs(path, buf) == 0)
                 {
-                    var frsize = OperatingSystem.IsMacOS()
-                        ? BitConverter.ToUInt32(buf, 0)              // Darwin: f_bsize first
-                        : (uint)BitConverter.ToUInt64(buf, 8);       // Linux: f_bsize, then f_frsize
-                    if (frsize is > 0 and <= 1 << 20) return frsize;
+                    var frsize = BitConverter.ToUInt64(buf, 8);
+                    if (frsize is > 0 and <= 1 << 20) return (long)frsize;
+
+                    // Only if the filesystem leaves f_frsize unset, and then distrust the
+                    // value: f_bsize may be an I/O hint rather than an allocation unit.
+                    var bsize = BitConverter.ToUInt64(buf, 0);
+                    if (bsize is > 0 and <= 64 * 1024) return (long)bsize;
                 }
             }
         }

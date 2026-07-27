@@ -276,7 +276,20 @@ public class ScannerTests
         Assert.Equal(1, node.Size);
         // A one-byte file always occupies at least one cluster.
         Assert.True(node.SizeOnDisk >= 512, $"expected a full cluster, got {node.SizeOnDisk}");
-        Assert.True(node.SizeOnDisk <= 65_536);
+        Assert.True(node.SizeOnDisk <= 65_536, $"a one-byte file cannot occupy {node.SizeOnDisk} bytes");
+    }
+
+    [Fact]
+    public void The_allocation_unit_is_a_plausible_cluster_size()
+    {
+        // Guards a mistake that only shows on one platform: Darwin reports a 1 MiB preferred
+        // I/O size in statvfs.f_bsize next to a 4 KiB f_frsize, and reading the wrong one
+        // rounds every file on the volume up to a megabyte. Asserting the shape of the value
+        // catches that on whichever platform the suite happens to run.
+        var cluster = NativeFs.GetClusterSize(Path.GetTempPath());
+
+        Assert.InRange(cluster, 512, 65_536);
+        Assert.True((cluster & (cluster - 1)) == 0, $"cluster size {cluster} is not a power of two");
     }
 
     [Fact]
