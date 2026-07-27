@@ -70,10 +70,46 @@ public partial class MainWindow : Window
                 Height = settings.WindowHeight;
             }
 
-            if (settings.WindowMaximized) WindowState = WindowState.Maximized;
+            if (settings.WindowMaximized)
+            {
+                WindowState = WindowState.Maximized;
+                return; // the window manager owns its size and place from here
+            }
         }
 
+        ClampToPrimaryScreen();
         CenterOnPrimaryScreen();
+    }
+
+    /// <summary>
+    /// Shrinks the window to fit the screen it is about to open on.
+    /// </summary>
+    /// <remarks>
+    /// The default size suits a desktop monitor and the saved size came from whatever display
+    /// the app last ran on; neither is a promise about this one. A 1280x800 laptop or virtual
+    /// machine is smaller than the default in both directions, and a window larger than the
+    /// screen puts its own title bar and buttons out of reach with no obvious way to drag them
+    /// back - the kind of first impression that gets an application deleted.
+    /// </remarks>
+    private void ClampToPrimaryScreen()
+    {
+        var screens = Screens;
+        if (screens is null || screens.ScreenCount == 0) return;
+
+        var target = screens.Primary ?? screens.All[0];
+        var scaling = target.Scaling <= 0 ? 1.0 : target.Scaling;
+
+        // WorkingArea leaves out the menu bar, dock and taskbar, and is in physical pixels
+        // while Width and Height are device-independent.
+        var availableWidth = target.WorkingArea.Width / scaling;
+        var availableHeight = target.WorkingArea.Height / scaling;
+        if (availableWidth <= 0 || availableHeight <= 0) return;
+
+        // A margin so the window reads as placed rather than wedged against the edges.
+        const double margin = 0.96;
+
+        Width = Math.Min(Width, availableWidth * margin);
+        Height = Math.Min(Height, availableHeight * margin);
     }
 
     /// <summary>

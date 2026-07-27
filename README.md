@@ -242,15 +242,17 @@ tests/Kartova.Core.Tests
 
 ```sh
 dotnet build                              # build everything
-dotnet test                               # 181 tests
+dotnet test                               # 200 tests
 dotnet run --project src/Kartova.App      # run it
 
 ./build/publish.sh                        # self-contained, host platform
 ./build/publish.sh all                    # all six platforms → artifacts/
+./build/publish.sh all package            # plus archives and SHA256SUMS.txt
 ```
 
-`pwsh ./build/publish.ps1` does the same on Windows. Tagging `v*` builds all six platforms in
-CI and attaches them to the release with checksums.
+`pwsh ./build/publish.ps1` does the same on Windows. One machine can emit all six targets,
+because .NET cross-publishes — but a build for a platform is not evidence it runs there, so
+each one is tested on the platform it targets before release.
 
 The suite covers scan aggregation, cancellation, exclusions, symlink and hard-link handling,
 volume enumeration, the filter query language, duplicate detection including folder matching
