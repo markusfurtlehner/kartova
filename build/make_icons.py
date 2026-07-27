@@ -1,8 +1,12 @@
 """Generate Kartova application icons with no third-party dependencies.
 
-Produces a treemap glyph: nested rounded blocks on a deep slate field, in the
-app's accent ramp. Writes PNGs at several sizes plus a multi-size .ico that
+Produces a treemap glyph: rounded blocks in the app's accent ramp on a fully
+transparent field. Writes PNGs at several sizes plus a multi-size .ico that
 embeds those PNGs directly (supported by Windows Vista and later).
+
+The background is transparent on purpose. A tinted plate only looks right on
+the theme it was drawn for, and the icon has to sit on a light title bar, a
+dark one, and whatever colour the user's desktop happens to be.
 """
 
 import struct
@@ -11,11 +15,17 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "Kartova.App" / "Assets"
 
-# Accent ramp, matching the UI theme.
-BG_TOP = (0x12, 0x16, 0x22)
-BG_BOT = (0x1B, 0x22, 0x33)
+# Blocks are authored inside the 0.10..0.90 box the old plate defined, then fitted
+# to the canvas below. Keeping the authoring coordinates readable matters more than
+# saving the transform.
+CONTENT_MIN, CONTENT_MAX = 0.100, 0.900
+
+# Margin left around the glyph once the plate is gone. Without a plate the artwork
+# can run closer to the edge, which buys legibility at 16px.
+PAD = 0.06
+
 BLOCKS = [
-    # x, y, w, h in a 0..1 unit square, colour
+    # x, y, w, h in the content box, colour
     (0.100, 0.100, 0.470, 0.470, (0x4C, 0x8D, 0xFF)),
     (0.590, 0.100, 0.310, 0.290, (0x37, 0xD6, 0xB0)),
     (0.590, 0.410, 0.310, 0.160, (0x8B, 0x7C, 0xFF)),
@@ -24,9 +34,14 @@ BLOCKS = [
     (0.590, 0.590, 0.310, 0.310, (0x5A, 0xC8, 0xFA)),
 ]
 
+# Maps the content box onto the padded canvas.
+_SCALE = (1.0 - 2 * PAD) / (CONTENT_MAX - CONTENT_MIN)
+_OFFSET = PAD - CONTENT_MIN * _SCALE
 
-def lerp(a, b, t):
-    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+def fit(value):
+    """Content-box coordinate to canvas coordinate."""
+    return value * _SCALE + _OFFSET
 
 
 def rounded_coverage(px, py, x, y, w, h, r, ss=4):
@@ -49,29 +64,14 @@ def rounded_coverage(px, py, x, y, w, h, r, ss=4):
 
 def render(size):
     """Return an RGBA bytearray of the icon at the given square size."""
-    buf = bytearray(size * size * 4)
-
-    # Background: vertical gradient with a soft rounded mask.
-    outer_r = size * 0.22
-    for py in range(size):
-        t = py / max(size - 1, 1)
-        br, bg, bb = lerp(BG_TOP, BG_BOT, t)
-        for px in range(size):
-            cov = rounded_coverage(px, py, 0, 0, size, size, outer_r)
-            if cov <= 0:
-                continue
-            i = (py * size + px) * 4
-            buf[i] = br
-            buf[i + 1] = bg
-            buf[i + 2] = bb
-            buf[i + 3] = round(255 * cov)
+    buf = bytearray(size * size * 4)  # fully transparent to start
 
     # Treemap blocks, each with a cushion-style vertical lift.
     block_r = max(size * 0.035, 1.0)
     for bx, by, bw, bh, colour in BLOCKS:
-        x, y = bx * size, by * size
-        w, h = bw * size, bh * size
-        x0, y0 = int(x), int(y)
+        x, y = fit(bx) * size, fit(by) * size
+        w, h = bw * _SCALE * size, bh * _SCALE * size
+        x0, y0 = max(0, int(x)), max(0, int(y))
         x1, y1 = min(size, int(x + w) + 2), min(size, int(y + h) + 2)
         for py in range(y0, y1):
             # Lit from upper-left: brighten the top, deepen the bottom.
@@ -82,11 +82,19 @@ def render(size):
                 cov = rounded_coverage(px, py, x, y, w, h, block_r)
                 if cov <= 0:
                     continue
+
                 i = (py * size + px) * 4
-                a = buf[i + 3] / 255 if buf[i + 3] else 0
+                a0 = buf[i + 3] / 255
+
+                # PNG stores straight alpha, not premultiplied, so the colour must stay
+                # at full strength and only the alpha may fall off at the edges. Writing
+                # colour * coverage instead would darken every antialiased edge into a
+                # grey fringe once a viewer composites it. Where two blocks meet, the
+                # colours are averaged by how much each one covers.
+                total = a0 + cov
                 for k in range(3):
-                    buf[i + k] = round(buf[i + k] * (1 - cov) + lit[k] * cov)
-                buf[i + 3] = round(255 * min(1.0, a + cov))
+                    buf[i + k] = round((buf[i + k] * a0 + lit[k] * cov) / total)
+                buf[i + 3] = round(255 * min(1.0, total))
     return buf
 
 
