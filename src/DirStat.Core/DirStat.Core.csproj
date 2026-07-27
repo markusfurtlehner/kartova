@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>DirStat.Core</RootNamespace>
+    <AssemblyName>DirStat.Core</AssemblyName>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DirStat.Core.Tests" />
+  </ItemGroup>
+
+</Project>
