@@ -89,7 +89,21 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task BrowseAsync()
     {
         if (PickFoldersAsync is null) return;
-        var folders = await PickFoldersAsync();
+
+        IReadOnlyList<string> folders;
+        try
+        {
+            folders = await PickFoldersAsync();
+        }
+        catch (Exception e)
+        {
+            // A platform file dialog can fail for reasons entirely outside the app —
+            // a missing desktop portal being the usual one on Linux. Say so rather than
+            // letting it surface as an unhandled exception from a command.
+            StatusMessage = $"Could not open the folder picker: {e.Message}";
+            return;
+        }
+
         if (folders.Count > 0) await StartScanAsync(folders);
     }
 
@@ -631,7 +645,18 @@ public sealed partial class MainViewModel : ObservableObject
         if (PickSaveFileAsync is null || _unfilteredRoot is null) return;
 
         var suggested = $"dirstat-{DateTime.Now:yyyyMMdd-HHmm}.{extension}";
-        var target = await PickSaveFileAsync(suggested);
+
+        string? target;
+        try
+        {
+            target = await PickSaveFileAsync(suggested);
+        }
+        catch (Exception e)
+        {
+            StatusMessage = $"Could not open the save dialog: {e.Message}";
+            return;
+        }
+
         if (string.IsNullOrEmpty(target)) return;
 
         var root = TreemapRoot ?? _unfilteredRoot;

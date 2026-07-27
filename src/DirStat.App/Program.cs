@@ -81,6 +81,26 @@ internal static class Program
             {
                 RenderingMode = [X11RenderingMode.Glx, X11RenderingMode.Software],
                 EnableIme = true,
+
+                // The native file dialog on Linux is the XDG desktop portal, reached over the
+                // D-Bus session bus. Where there is no session bus — WSLg, minimal containers,
+                // bare X11 sessions — that call never returns and the picker simply never
+                // appears. Falling back to Avalonia's own dialog keeps "choose a folder"
+                // working everywhere, which matters more here than native integration.
+                UseDBusFilePicker = HasSessionBus(),
             })
             .LogToTrace();
+
+    /// <summary>True when a D-Bus session bus is reachable, so portal calls can be answered.</summary>
+    private static bool HasSessionBus()
+    {
+        if (!OperatingSystem.IsLinux()) return false;
+
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS")))
+            return true;
+
+        // With no address exported, the well-known socket is the other place it can live.
+        var runtimeDir = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        return !string.IsNullOrEmpty(runtimeDir) && File.Exists(Path.Combine(runtimeDir, "bus"));
+    }
 }

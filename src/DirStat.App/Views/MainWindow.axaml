@@ -10,7 +10,7 @@
         Title="DirStat"
         Width="1480" Height="940"
         MinWidth="900" MinHeight="600"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="Manual"
         Background="{DynamicResource SurfaceBase}"
         Icon="/Assets/dirstat.ico">
 

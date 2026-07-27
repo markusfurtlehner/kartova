@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -58,16 +59,48 @@ public partial class MainWindow : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
-        if (DataContext is not MainViewModel viewModel) return;
-
-        var settings = viewModel.Settings;
-        if (settings.WindowWidth > 400 && settings.WindowHeight > 300)
+        if (DataContext is MainViewModel viewModel)
         {
-            Width = settings.WindowWidth;
-            Height = settings.WindowHeight;
+            var settings = viewModel.Settings;
+            if (settings.WindowWidth > 400 && settings.WindowHeight > 300)
+            {
+                Width = settings.WindowWidth;
+                Height = settings.WindowHeight;
+            }
+
+            if (settings.WindowMaximized) WindowState = WindowState.Maximized;
         }
 
-        if (settings.WindowMaximized) WindowState = WindowState.Maximized;
+        CenterOnPrimaryScreen();
+    }
+
+    /// <summary>
+    /// Places the window in the middle of the primary monitor.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="WindowStartupLocation.CenterScreen"/> centres on the screen the platform
+    /// nominates, and on X11 that is the whole virtual desktop rather than one monitor. With
+    /// several monitors the window lands at the centre of their combined bounding box, which
+    /// can be a different monitor entirely — or, where a monitor sits above or left of the
+    /// primary and the layout has a negative origin, somewhere the user never looks. The
+    /// symptom is unpleasant, because the app appears to launch and then hang: there is a
+    /// taskbar entry and no visible window. Centring explicitly on the primary is what people
+    /// expect on every platform, so it is done here rather than left to the toolkit.
+    /// </remarks>
+    private void CenterOnPrimaryScreen()
+    {
+        var screens = Screens;
+        if (screens is null || screens.ScreenCount == 0) return;
+
+        var size = PixelSize.FromSize(ClientSize, RenderScaling);
+        if (size.Width <= 0 || size.Height <= 0) return;
+
+        var target = screens.Primary ?? screens.All[0];
+        var area = target.WorkingArea;
+
+        Position = new PixelPoint(
+            area.X + Math.Max(0, (area.Width - size.Width) / 2),
+            area.Y + Math.Max(0, (area.Height - size.Height) / 2));
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
