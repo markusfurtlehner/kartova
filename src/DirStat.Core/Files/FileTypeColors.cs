@@ -46,8 +46,12 @@ public static class FileTypeColors
     /// <summary>Colour for a synthetic unknown-space node.</summary>
     public const uint UnknownSpace = 0xFF4A5164;
 
-    /// <summary>Colour for a directory when drawn as a solid block.</summary>
-    public const uint Directory = 0xFF3C4459;
+    /// <summary>
+    /// Colour for a directory's own area in the treemap. Deliberately muted so file types
+    /// stay dominant, but light enough that a region dense with culled sub-pixel files reads
+    /// as packed content rather than as a hole in the map.
+    /// </summary>
+    public const uint Directory = 0xFF47536E;
 
     private static Dictionary<string, uint> BuildCurated()
     {

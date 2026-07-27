@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DirStat.App.ViewModels"
+             mc:Ignorable="d"
+             x:Class="DirStat.App.Views.ScanProgressView"
+             x:DataType="vm:MainViewModel">
+
+  <Border Background="{DynamicResource HeroGradient}">
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Width="620" Spacing="30">
+
+      <StackPanel Spacing="8" HorizontalAlignment="Center">
+        <TextBlock Classes="display" Text="Scanning" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding ScanTargetText}" Classes="secondary"
+                   HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+
+      <!-- Indeterminate: total size is unknowable until the walk finishes. -->
+      <ProgressBar IsIndeterminate="True" Height="3" CornerRadius="2"
+                   Foreground="{DynamicResource AccentBase}"
+                   Background="{DynamicResource SurfaceRaised}" />
+
+      <!-- Live counters -->
+      <Border Classes="card" Padding="26">
+        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="22">
+
+          <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+            <TextBlock Classes="caption" Text="FILES" />
+            <TextBlock Text="{Binding ScanFilesText}" Classes="title numeric"
+                       HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
+            <TextBlock Classes="caption" Text="FOLDERS" />
+            <TextBlock Text="{Binding ScanDirectoriesText}" Classes="title numeric"
+                       HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4">
+            <TextBlock Classes="caption" Text="TOTAL SIZE" />
+            <TextBlock Text="{Binding ScanBytesText}" Classes="title numeric"
+                       HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
+            <TextBlock Classes="caption" Text="ELAPSED" />
+            <TextBlock Text="{Binding ScanElapsedText}" Classes="subtitle numeric"
+                       HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="4">
+            <TextBlock Classes="caption" Text="THROUGHPUT" />
+            <TextBlock Text="{Binding ScanRateText}" Classes="subtitle numeric"
+                       HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4">
+            <TextBlock Classes="caption" Text="CURRENT FOLDER" />
+            <TextBlock Text="{Binding ScanCurrentPath}" Classes="tertiary mono"
+                       FontSize="11.5" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+
+        </Grid>
+      </Border>
+
+      <Button Content="Cancel scan" Command="{Binding CancelScanCommand}"
+              HorizontalAlignment="Center" Padding="22,9" />
+
+      <TextBlock Classes="tertiary" HorizontalAlignment="Center" FontSize="11.5"
+                 Text="Cancelling still shows everything found so far." />
+
+    </StackPanel>
+  </Border>
+</UserControl>

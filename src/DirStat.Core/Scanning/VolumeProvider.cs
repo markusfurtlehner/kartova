@@ -44,6 +44,11 @@ public static class VolumeProvider
                 var total = drive.TotalSize;
                 if (total <= 0) continue;
 
+                // Virtual and placeholder drives report absurd capacities — commonly the
+                // signed 64-bit maximum. No real volume approaches an exbibyte, so treat
+                // anything at that scale as synthetic rather than showing "8.00 EiB free".
+                if (total >= 1L << 60) continue;
+
                 volumes.Add(new VolumeInfo
                 {
                     RootPath = drive.RootDirectory.FullName,

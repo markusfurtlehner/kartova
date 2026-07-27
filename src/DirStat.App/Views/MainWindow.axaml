@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:DirStat.App.ViewModels"
+        xmlns:views="using:DirStat.App.Views"
+        mc:Ignorable="d"
+        x:Class="DirStat.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="DirStat"
+        Width="1480" Height="940"
+        MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SurfaceBase}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        Icon="/Assets/dirstat.ico">
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ===================================================== Title bar -->
+    <!-- A custom caption keeps the shell consistent across the three platforms
+         instead of inheriting three different system title bars. -->
+    <Grid Grid.Row="0" Height="38" Background="{DynamicResource TitleBarBrush}"
+          ColumnDefinitions="Auto,*,Auto"
+          PointerPressed="OnTitleBarPressed"
+          DoubleTapped="OnTitleBarDoubleTapped">
+
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9"
+                  Margin="12,0,0,0" VerticalAlignment="Center">
+        <Image Source="/Assets/dirstat-32.png" Width="17" Height="17" />
+        <TextBlock Text="DirStat" FontWeight="SemiBold" FontSize="12.5"
+                   VerticalAlignment="Center" />
+        <TextBlock Text="{Binding SelectionPathText}" Classes="tertiary"
+                   FontSize="11.5" VerticalAlignment="Center" Margin="10,0,0,0"
+                   TextTrimming="CharacterEllipsis" MaxWidth="620"
+                   IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Results}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <Button Classes="caption" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="Switch theme">
+          <TextBlock Text="◐" FontSize="14" />
+        </Button>
+        <Button Classes="caption" Click="OnMinimize" ToolTip.Tip="Minimise">
+          <TextBlock Text="—" FontSize="11" />
+        </Button>
+        <Button Classes="caption" Click="OnMaximize" ToolTip.Tip="Maximise">
+          <TextBlock Text="□" FontSize="12" />
+        </Button>
+        <Button Classes="caption close" Click="OnClose" ToolTip.Tip="Close">
+          <TextBlock Text="✕" FontSize="12" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- ======================================================= Screens -->
+    <Panel Grid.Row="1">
+
+      <views:VolumePickerView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Volumes}" />
+
+      <views:ScanProgressView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Scanning}" />
+
+      <views:ResultsView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Results}" />
+
+      <!-- ================================================ Confirm dialog -->
+      <Panel IsVisible="{Binding IsConfirmingDelete}">
+        <Border Background="{DynamicResource ScrimBrush}" />
+        <Border Classes="card fade-in" Width="470" Padding="26"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource SurfaceOverlay}"
+                BorderBrush="{DynamicResource BorderStrong}"
+                BoxShadow="0 24 64 0 #99000000">
+          <StackPanel Spacing="16">
+            <TextBlock Classes="title" Text="{Binding ConfirmTitle}" />
+            <TextBlock Text="{Binding ConfirmBody}" Classes="secondary"
+                       TextWrapping="Wrap" LineHeight="20" />
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+              <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+              <Button Classes="danger" Content="Delete" Command="{Binding ConfirmDeleteCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Panel>
+
+    </Panel>
+  </Grid>
+</Window>

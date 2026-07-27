@@ -88,49 +88,124 @@ public sealed class TreemapRenderer
     }
 
     /// <summary>Renders into caller-supplied buffers, avoiding reallocation on resize.</summary>
+    /// <remarks>
+    /// Rendering splits at depth 1. In pre-order a top-level child and all its descendants
+    /// occupy one contiguous run of the tile array, and those runs paint into disjoint
+    /// rectangles — so they can be rasterized concurrently with no locking and no risk of
+    /// two threads touching the same pixel.
+    /// </remarks>
     public void Render(TreemapModel model, TreemapOptions options, uint[] pixels, int[] owners)
     {
-        var width = model.Width;
-        var height = model.Height;
         var tiles = model.Tiles;
         if (tiles.Length == 0) return;
 
-        var light = NormalizeLight(options);
+        var context = new RenderContext(
+            options, NormalizeLight(options), pixels, owners, model.Width, model.Height,
+            Math.Max(model.MaxDepth + 2, 4));
 
-        // Cushion surface per depth level. Index 0 is the root's flat surface.
-        var depthCapacity = Math.Max(model.MaxDepth + 2, 4);
-        var surfaces = new double[depthCapacity][];
-        for (var i = 0; i < depthCapacity; i++) surfaces[i] = new double[4];
+        // The root establishes the surface every subtree builds on.
+        var rootSurface = new double[4];
+        var first = 0;
+        if (tiles[0].Depth == 0)
+        {
+            if (options.CushionShading) AddRidge(rootSurface, tiles[0], options.CushionHeight);
+            PaintTile(tiles[0], 0, rootSurface, context);
+            first = 1;
+        }
 
-        for (var t = 0; t < tiles.Length; t++)
+        var ranges = FindTopLevelRanges(tiles, first);
+
+        if (ranges.Count <= 1)
+        {
+            foreach (var range in ranges) RenderRange(tiles, range, rootSurface, context);
+            return;
+        }
+
+        Parallel.ForEach(
+            ranges,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            range => RenderRange(tiles, range, rootSurface, context));
+    }
+
+    /// <summary>
+    /// Splits the tile array into one contiguous run per top-level child.
+    /// </summary>
+    private static List<(int Start, int End)> FindTopLevelRanges(TreemapTile[] tiles, int first)
+    {
+        var ranges = new List<(int, int)>(16);
+        var start = -1;
+
+        for (var i = first; i < tiles.Length; i++)
+        {
+            if (tiles[i].Depth != 1) continue;
+            if (start >= 0) ranges.Add((start, i));
+            start = i;
+        }
+
+        if (start >= 0) ranges.Add((start, tiles.Length));
+        else if (first < tiles.Length) ranges.Add((first, tiles.Length));
+
+        return ranges;
+    }
+
+    private void RenderRange(
+        TreemapTile[] tiles, (int Start, int End) range, double[] rootSurface, RenderContext context)
+    {
+        var options = context.Options;
+
+        // Surface stack local to this thread. Index d holds the surface of the tile at depth d,
+        // which is exactly what a tile at depth d+1 needs as its parent.
+        var surfaces = new double[context.DepthCapacity][];
+        for (var i = 0; i < surfaces.Length; i++) surfaces[i] = new double[4];
+        Array.Copy(rootSurface, surfaces[1], 4);
+
+        for (var t = range.Start; t < range.End; t++)
         {
             ref readonly var tile = ref tiles[t];
             if (tile.Width <= 0 || tile.Height <= 0) continue;
 
             var depth = tile.Depth;
-            if (depth + 1 >= depthCapacity) continue;
+            if (depth + 1 >= context.DepthCapacity) continue;
 
-            // Derive this tile's surface from its parent's, adding one more ridge.
-            var parent = surfaces[depth];
             var own = surfaces[depth + 1];
 
             if (options.CushionShading)
             {
-                Array.Copy(parent, own, 4);
-                var ridge = options.CushionHeight * Math.Pow(options.CushionDecay, depth);
-                AddRidge(own, tile, ridge);
+                Array.Copy(surfaces[depth], own, 4);
+                AddRidge(own, tile, options.CushionHeight * Math.Pow(options.CushionDecay, depth));
             }
 
-            if (!tile.IsLeaf)
-            {
-                // Interior node: draw only its frame. Children will cover the interior.
-                if (options.DirectoryFrames) DrawFrame(tile, t, pixels, owners, width, height);
-                continue;
-            }
-
-            FillTile(tile, t, own, options, light, pixels, owners, width, height);
+            PaintTile(tile, t, own, context);
         }
     }
+
+    /// <summary>
+    /// Paints one tile. Interior nodes are filled as well as framed, not merely outlined:
+    /// children that fell below a pixel were culled, and without a fill those gaps would
+    /// read as holes in the map. Children are painted afterwards and cover the interior.
+    /// </summary>
+    private static void PaintTile(in TreemapTile tile, int index, double[] surface, RenderContext context)
+    {
+        // An interior fill survives only in the gaps left by culled sub-pixel children, so it
+        // gets a flat fill rather than per-pixel lighting. The cushion would be invisible under
+        // the children that cover it, and computing it at every level doubled render time.
+        var cushion = context.Options.CushionShading && tile.IsLeaf;
+
+        FillTile(tile, index, surface, context.Options, context.Light, cushion,
+            context.Pixels, context.Owners, context.Width, context.Height);
+
+        if (!tile.IsLeaf && context.Options.DirectoryFrames)
+            DrawFrame(tile, index, context.Pixels, context.Owners, context.Width, context.Height);
+    }
+
+    private readonly record struct RenderContext(
+        TreemapOptions Options,
+        Light Light,
+        uint[] Pixels,
+        int[] Owners,
+        int Width,
+        int Height,
+        int DepthCapacity);
 
     /// <summary>
     /// Snaps a tile's floating-point bounds to whole pixels.
@@ -193,7 +268,7 @@ public sealed class TreemapRenderer
 
     private static void FillTile(
         in TreemapTile tile, int tileIndex, double[] surface, TreemapOptions options,
-        in Light light, uint[] pixels, int[] owners, int width, int height)
+        in Light light, bool cushion, uint[] pixels, int[] owners, int width, int height)
     {
         var baseColor = ColorFor(tile.Node);
 
@@ -204,7 +279,7 @@ public sealed class TreemapRenderer
         var bg = (baseColor >> 8) & 0xFF;
         var bb = baseColor & 0xFF;
 
-        if (!options.CushionShading)
+        if (!cushion)
         {
             for (var y = y0; y < y1; y++)
             {
