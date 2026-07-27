@@ -9,6 +9,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Headless work is checked before anything touches Avalonia, so scripting the app on
+        // a build agent or over SSH needs no display at all.
+        if (Cli.CommandLine.WantsHeadless(args)) return Cli.CommandLine.Run(args);
+
         if (!TryVerifyDisplay(out var problem))
         {
             Console.Error.WriteLine(problem);

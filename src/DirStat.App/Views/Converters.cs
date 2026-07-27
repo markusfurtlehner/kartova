@@ -30,6 +30,11 @@ public static class Converters
         new FuncValueConverter<bool, Avalonia.Thickness>(
             hasChildren => hasChildren ? new Avalonia.Thickness(0) : new Avalonia.Thickness(19, 0, 0, 0));
 
+    /// <summary>Pane heading that follows whichever chart is showing.</summary>
+    public static readonly IValueConverter ChartTitle =
+        new FuncValueConverter<bool, string>(sunburst =>
+            Localization.Loc.T(sunburst ? "Results.Sunburst" : "Results.Treemap"));
+
     private static readonly Geometry CollapsedArrow = Geometry.Parse("M 0,0 L 6,4 L 0,8 Z");
     private static readonly Geometry ExpandedArrow = Geometry.Parse("M 0,0 L 8,0 L 4,6 Z");
 

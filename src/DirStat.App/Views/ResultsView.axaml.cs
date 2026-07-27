@@ -15,6 +15,14 @@ public partial class ResultsView : UserControl
 
         // Tunnel, because ListBoxItem handles the bubbling event and would swallow this.
         AddHandler(PointerPressedEvent, OnTreePointerPressed, RoutingStrategies.Tunnel);
+
+        // Saving the chart needs the bitmap the control actually rendered, so the view hands
+        // the view model a way to reach it rather than re-rendering a second time.
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainViewModel model)
+                model.GetChartImage = () => this.FindControl<TreemapControl>("Treemap")?.CurrentImage;
+        };
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);

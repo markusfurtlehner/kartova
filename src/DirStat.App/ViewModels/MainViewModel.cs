@@ -16,6 +16,8 @@ public enum AppScreen
     Scanning,
     Results,
     Duplicates,
+    Insights,
+    Comparison,
 }
 
 /// <summary>Root view model. Owns screen state, the scan lifecycle, and cross-pane selection.</summary>
@@ -40,10 +42,24 @@ public sealed partial class MainViewModel : ObservableObject
         Duplicates.GetScanRoot = () => _unfilteredRoot;
         Duplicates.ConfirmAsync = RequestConfirmationAsync;
         Duplicates.CopiesDeleted = OnDuplicatesDeletedAsync;
+
+        Insights.GetScanRoot = () => _unfilteredRoot;
+        Insights.ConfirmAsync = RequestConfirmationAsync;
+        Insights.ItemsDeleted = OnDuplicatesDeletedAsync;
+
+        Comparison.GetScanRoot = () => _unfilteredRoot;
+
+        foreach (var name in settings.ExcludedDirectoryNames) Exclusions.Add(name);
     }
 
     /// <summary>The duplicate finder screen.</summary>
     public DuplicatesViewModel Duplicates { get; } = new();
+
+    /// <summary>The insights screen.</summary>
+    public InsightsViewModel Insights { get; } = new();
+
+    /// <summary>Snapshot storage and comparison.</summary>
+    public ComparisonViewModel Comparison { get; } = new();
 
     public AppSettings Settings { get; }
 
@@ -252,8 +268,10 @@ public sealed partial class MainViewModel : ObservableObject
 
         BuildTree(result.Root);
 
-        // A fresh scan invalidates any previous duplicate search.
+        // A fresh scan invalidates any previous derived analysis.
         Duplicates.Reset();
+        Insights.Reset();
+        Comparison.Reset();
 
         SelectedExtension = null;
         Extensions.Clear();
@@ -604,6 +622,112 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void BackToResults() => Screen = AppScreen.Results;
+
+    [RelayCommand]
+    private void ShowInsights()
+    {
+        if (_unfilteredRoot is null) return;
+        Screen = AppScreen.Insights;
+    }
+
+    [RelayCommand]
+    private void ShowComparison()
+    {
+        if (_unfilteredRoot is null) return;
+        Comparison.RefreshSnapshots();
+        Screen = AppScreen.Comparison;
+    }
+
+    // ------------------------------------------------------------- chart view
+
+    /// <summary>Show the scan as concentric rings rather than nested rectangles.</summary>
+    [ObservableProperty] private bool _isSunburst;
+
+    [RelayCommand]
+    private void ToggleChart() => IsSunburst = !IsSunburst;
+
+    /// <summary>Set by the view; hands back whatever the chart last rendered.</summary>
+    public Func<Avalonia.Media.Imaging.Bitmap?>? GetChartImage { get; set; }
+
+    [RelayCommand]
+    private async Task SaveChartImageAsync()
+    {
+        if (PickSaveFileAsync is null || GetChartImage is null) return;
+
+        var image = GetChartImage();
+        if (image is null) return;
+
+        var suggested = $"dirstat-{(IsSunburst ? "sunburst" : "treemap")}-{DateTime.Now:yyyyMMdd-HHmm}.png";
+
+        string? target;
+        try
+        {
+            target = await PickSaveFileAsync(suggested);
+        }
+        catch (Exception e)
+        {
+            StatusMessage = Loc.Format("Status.SaveDialogFailed", e.Message);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(target)) return;
+
+        try
+        {
+            ImageExporter.SavePng(image, target);
+            StatusMessage = Loc.Format("Status.ImageSaved", target);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            StatusMessage = Loc.Format("Status.ExportFailed", e.Message);
+        }
+    }
+
+    // -------------------------------------------------------------- exclusions
+
+    /// <summary>Folder names skipped wherever they appear, applied on the next scan.</summary>
+    public ObservableCollection<string> Exclusions { get; } = [];
+
+    [ObservableProperty] private bool _isExclusionsOpen;
+    [ObservableProperty] private string _newExclusion = string.Empty;
+
+    /// <summary>Names people most often want skipped, offered as one-tap additions.</summary>
+    public IReadOnlyList<string> SuggestedExclusions { get; } =
+        ["node_modules", "__pycache__", ".git", "bin", "obj", ".gradle", "target", ".venv"];
+
+    [RelayCommand]
+    private void ToggleExclusions()
+    {
+        IsExclusionsOpen = !IsExclusionsOpen;
+        if (IsExclusionsOpen) IsSettingsOpen = false;
+    }
+
+    [RelayCommand]
+    private void AddExclusion(string? name)
+    {
+        var value = (name ?? NewExclusion).Trim();
+        if (value.Length == 0) return;
+
+        if (!Exclusions.Any(e => string.Equals(e, value, StringComparison.OrdinalIgnoreCase)))
+            Exclusions.Add(value);
+
+        NewExclusion = string.Empty;
+        PersistExclusions();
+    }
+
+    [RelayCommand]
+    private void RemoveExclusion(string? name)
+    {
+        if (name is null) return;
+        Exclusions.Remove(name);
+        PersistExclusions();
+    }
+
+    private void PersistExclusions()
+    {
+        Settings.ExcludedDirectoryNames.Clear();
+        Settings.ExcludedDirectoryNames.AddRange(Exclusions);
+    }
 
     /// <summary>
     /// Brings the scan back in line with the disk after duplicates are removed.

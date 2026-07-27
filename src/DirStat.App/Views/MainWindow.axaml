@@ -102,6 +102,12 @@
       <views:DuplicatesView
         IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Duplicates}" />
 
+      <views:InsightsView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Insights}" />
+
+      <views:ComparisonView
+        IsVisible="{Binding Screen, Converter={x:Static views:Converters.ScreenIs}, ConverterParameter=Comparison}" />
+
       <!-- ================================================ Confirm dialog -->
       <Panel IsVisible="{Binding IsConfirmingDelete}">
         <Border Background="{DynamicResource ScrimBrush}" />

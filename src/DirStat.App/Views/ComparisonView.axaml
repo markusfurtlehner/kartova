@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DirStat.App.ViewModels"
+             xmlns:views="using:DirStat.App.Views"
+             xmlns:l="using:DirStat.App.Localization"
+             mc:Ignorable="d"
+             x:Class="DirStat.App.Views.ComparisonView"
+             x:DataType="vm:MainViewModel">
+
+  <UserControl.Resources>
+    <StreamGeometry x:Key="IconBack4">M 10,2 L 4,8 L 10,14</StreamGeometry>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,*" DataContext="{Binding Comparison}">
+
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="14,9">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="ghost" Padding="9,6"
+                Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BackToResultsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconBack4}" Stroke="{DynamicResource TextSecondary}"
+                  StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                  Width="16" Height="16" Stretch="None" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T Common.Back}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" Classes="tertiary"
+                   FontSize="11.5" VerticalAlignment="Center" HorizontalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+
+        <Button Grid.Column="2" Classes="accent" Padding="14,7"
+                Content="{l:T Snap.Save}" Command="{Binding SaveSnapshotCommand}" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="360,*">
+
+      <!-- =============================== Stored snapshots =============================== -->
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceBase}"
+              BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Grid.Row="0" Margin="16,16,16,10" Spacing="6">
+            <TextBlock Classes="title" Text="{l:T Snap.Title}" />
+            <TextBlock Classes="tertiary" FontSize="11.5" TextWrapping="Wrap"
+                       Text="{l:T Snap.Subtitle}" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="1" Classes="tertiary" Margin="16" TextWrapping="Wrap"
+                     Text="{l:T Snap.NoSnapshots}"
+                     IsVisible="{Binding !Snapshots.Count}" />
+
+          <ScrollViewer Grid.Row="1" IsVisible="{Binding Snapshots.Count}">
+            <ItemsControl ItemsSource="{Binding Snapshots}" Margin="10,0,10,14">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SnapshotViewModel">
+                  <Button Classes="snapshot-card" Margin="0,0,0,7"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Command="{Binding $parent[ItemsControl].((vm:ComparisonViewModel)DataContext).CompareCommand}"
+                          CommandParameter="{Binding}">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding RootPath}" FontWeight="Medium"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding TakenText}" Classes="tertiary" FontSize="11" />
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding SizeText}" Classes="secondary" FontSize="11.5" />
+                        <TextBlock Text="{Binding FilesText}" Classes="tertiary" FontSize="11.5" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <!-- ================================== Comparison ================================== -->
+      <Panel Grid.Column="1">
+
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                    IsVisible="{Binding !HasComparison}" MaxWidth="420">
+          <TextBlock Classes="tertiary" TextAlignment="Center" TextWrapping="Wrap"
+                     Text="{l:T Snap.Compare}" />
+        </StackPanel>
+
+        <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding HasComparison}">
+
+          <!-- Before / after / change -->
+          <Border Grid.Row="0" Padding="20,16" Background="{DynamicResource SurfaceBase}"
+                  BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,*,*">
+              <StackPanel Grid.Column="0" Spacing="4">
+                <TextBlock Classes="caption" Text="{l:T Snap.Before}" />
+                <TextBlock Text="{Binding BeforeText}" Classes="title numeric"
+                           HorizontalAlignment="Left" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Classes="caption" Text="{l:T Snap.After}" />
+                <TextBlock Text="{Binding AfterText}" Classes="title numeric"
+                           HorizontalAlignment="Left" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="4">
+                <TextBlock Classes="caption" Text="{l:T Snap.Change}" />
+                <TextBlock Text="{Binding ChangeText}" Classes="title numeric"
+                           HorizontalAlignment="Left"
+                           Foreground="{Binding ChangeBrush}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <TextBlock Grid.Row="1" Classes="caption" Text="{l:T Snap.Changes}" Margin="20,14,0,8" />
+
+          <TextBlock Grid.Row="2" Classes="tertiary" Margin="20" TextWrapping="Wrap"
+                     Text="{l:T Snap.NoChanges}" IsVisible="{Binding IsEmpty}" />
+
+          <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsEmpty}">
+            <ItemsControl ItemsSource="{Binding Changes}" Margin="14,0,14,16">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChangeViewModel">
+                  <Border Background="{DynamicResource SurfaceRaised}" CornerRadius="7"
+                          Padding="12,9" Margin="0,0,0,5" ToolTip.Tip="{Binding FullPath}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto">
+
+                      <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                              Width="3" CornerRadius="2" Margin="0,0,11,0"
+                              Background="{Binding AccentBrush}" />
+
+                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RelativePath}"
+                                 TextTrimming="CharacterEllipsis" FontSize="12.5" />
+
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding KindText}"
+                                 Classes="tertiary" FontSize="11" VerticalAlignment="Center"
+                                 Margin="12,0" />
+
+                      <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding DeltaText}"
+                                 Classes="numeric" FontWeight="SemiBold" MinWidth="92"
+                                 Foreground="{Binding AccentBrush}" />
+
+                      <views:FractionBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                         Fraction="{Binding Fraction}"
+                                         Fill="{Binding AccentBrush}"
+                                         Track="{DynamicResource RingTrack}"
+                                         BarHeight="3" Height="9" Margin="0,5,0,0" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Panel>
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="Button.snapshot-card">
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaised}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusMedium}" />
+      <Setter Property="Padding" Value="14,12" />
+    </Style>
+    <Style Selector="Button.snapshot-card:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBase}" />
+    </Style>
+  </UserControl.Styles>
+
+</UserControl>

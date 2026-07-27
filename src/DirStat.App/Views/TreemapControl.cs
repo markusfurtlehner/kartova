@@ -40,6 +40,16 @@ public sealed class TreemapControl : Control
     public static readonly StyledProperty<bool> DirectoryFramesProperty =
         AvaloniaProperty.Register<TreemapControl, bool>(nameof(DirectoryFrames), defaultValue: true);
 
+    /// <summary>Draw the same data as concentric rings instead of nested rectangles.</summary>
+    public static readonly StyledProperty<bool> SunburstProperty =
+        AvaloniaProperty.Register<TreemapControl, bool>(nameof(Sunburst));
+
+    public bool Sunburst
+    {
+        get => GetValue(SunburstProperty);
+        set => SetValue(SunburstProperty, value);
+    }
+
     /// <summary>Raised on double-click, asking the host to zoom into the node.</summary>
     public static readonly StyledProperty<System.Windows.Input.ICommand?> ZoomCommandProperty =
         AvaloniaProperty.Register<TreemapControl, System.Windows.Input.ICommand?>(nameof(ZoomCommand));
@@ -109,7 +119,8 @@ public sealed class TreemapControl : Control
 
         if (change.Property == RootProperty ||
             change.Property == CushionShadingProperty ||
-            change.Property == DirectoryFramesProperty)
+            change.Property == DirectoryFramesProperty ||
+            change.Property == SunburstProperty)
         {
             ScheduleRender(immediate: true);
         }
@@ -121,7 +132,7 @@ public sealed class TreemapControl : Control
         }
         else if (change.Property == SelectedNodeProperty)
         {
-            _selectionRect = FindTileRect(SelectedNode);
+            _selectionRect = FindShapeBounds(SelectedNode);
             InvalidateVisual();
         }
     }
@@ -163,6 +174,8 @@ public sealed class TreemapControl : Control
         if (root is null || root.Size <= 0 || width < 8 || height < 8)
         {
             _raster = null;
+            _sunburstModel = null;
+            _sunburstOwners = null;
             _bitmap = null;
             _selectionRect = null;
             _hoverRect = null;
@@ -178,22 +191,50 @@ public sealed class TreemapControl : Control
             MinTileSide = 1.0,
         };
 
+        var sunburst = Sunburst;
+
         try
         {
-            var raster = await Task.Run(() =>
+            if (sunburst)
             {
-                var model = TreemapLayout.Build(root, width, height, options);
-                token.ThrowIfCancellationRequested();
-                return new TreemapRenderer().Render(model, options);
-            }, token);
+                var rendered = await Task.Run(() =>
+                {
+                    var model = SunburstLayout.Build(root, width, height, _sunburstOptions);
+                    token.ThrowIfCancellationRequested();
 
-            if (token.IsCancellationRequested) return;
+                    var pixels = new uint[width * height];
+                    var owners = new int[width * height];
+                    SunburstLayout.Render(model, _sunburstOptions, pixels, owners, EmptyBackgroundColor);
+                    return (model, pixels, owners);
+                }, token);
 
-            _bitmap = CreateBitmap(raster, width, height, scaling);
-            _raster = raster;
+                if (token.IsCancellationRequested) return;
+
+                _sunburstModel = rendered.model;
+                _sunburstOwners = rendered.owners;
+                _raster = null;
+                _bitmap = CreateBitmap(rendered.pixels, width, height, scaling);
+            }
+            else
+            {
+                var raster = await Task.Run(() =>
+                {
+                    var model = TreemapLayout.Build(root, width, height, options);
+                    token.ThrowIfCancellationRequested();
+                    return new TreemapRenderer().Render(model, options);
+                }, token);
+
+                if (token.IsCancellationRequested) return;
+
+                _raster = raster;
+                _sunburstModel = null;
+                _sunburstOwners = null;
+                _bitmap = CreateBitmap(raster.Pixels, width, height, scaling);
+            }
+
             _rasterSize = new PixelSize(width, height);
-            _selectionRect = FindTileRect(SelectedNode);
-            _hoverRect = FindTileRect(_hovered);
+            _selectionRect = FindShapeBounds(SelectedNode);
+            _hoverRect = FindShapeBounds(_hovered);
 
             InvalidateVisual();
         }
@@ -203,8 +244,17 @@ public sealed class TreemapControl : Control
         }
     }
 
-    /// <summary>Copies the rasterized pixels into a GPU-uploadable bitmap.</summary>
-    private static WriteableBitmap CreateBitmap(TreemapRaster raster, int width, int height, double scaling)
+    private readonly SunburstOptions _sunburstOptions = new();
+    private SunburstModel? _sunburstModel;
+    private int[]? _sunburstOwners;
+
+    private const uint EmptyBackgroundColor = 0xFF0D1017;
+
+    /// <summary>The last rendered image, for saving to a file.</summary>
+    public Bitmap? CurrentImage => _bitmap;
+
+    /// <summary>Copies rasterized pixels into a GPU-uploadable bitmap.</summary>
+    private static WriteableBitmap CreateBitmap(uint[] source, int width, int height, double scaling)
     {
         // Matching the bitmap DPI to the render scaling makes one bitmap pixel land on one
         // physical pixel, so the cushion detail stays crisp on a HiDPI display.
@@ -212,7 +262,6 @@ public sealed class TreemapControl : Control
         var bitmap = new WriteableBitmap(new PixelSize(width, height), dpi, PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
         using var buffer = bitmap.Lock();
-        var source = raster.Pixels;
 
         unsafe
         {
@@ -265,20 +314,78 @@ public sealed class TreemapControl : Control
     private static Rect Scale(Rect rect, double scaleX, double scaleY) =>
         new(rect.X * scaleX, rect.Y * scaleY, rect.Width * scaleX, rect.Height * scaleY);
 
-    /// <summary>Finds the drawn rectangle for a node, or null when it is not on the map.</summary>
-    private Rect? FindTileRect(FileNode? node)
+    /// <summary>
+    /// Bounding box of a node's drawn shape, or null when it is not on the chart.
+    /// </summary>
+    /// <remarks>
+    /// For a treemap this is the tile itself. For a sunburst it is the box around the ring
+    /// segment, which is enough for the highlight outline and avoids drawing an arc overlay
+    /// for something the user is only hovering over.
+    /// </remarks>
+    private Rect? FindShapeBounds(FileNode? node)
     {
-        var raster = _raster;
-        if (node is null || raster is null) return null;
+        if (node is null) return null;
 
-        var tiles = raster.Model.Tiles;
-        for (var i = 0; i < tiles.Length; i++)
+        if (_raster is { } raster)
         {
-            if (!ReferenceEquals(tiles[i].Node, node)) continue;
-            ref readonly var tile = ref tiles[i];
-            return new Rect(tile.X, tile.Y, tile.Width, tile.Height);
+            var tiles = raster.Model.Tiles;
+            for (var i = 0; i < tiles.Length; i++)
+            {
+                if (!ReferenceEquals(tiles[i].Node, node)) continue;
+                ref readonly var tile = ref tiles[i];
+                return new Rect(tile.X, tile.Y, tile.Width, tile.Height);
+            }
+
+            return null;
         }
 
+        if (_sunburstModel is not { } model) return null;
+
+        var segments = model.Segments;
+        for (var i = 0; i < segments.Length; i++)
+        {
+            if (!ReferenceEquals(segments[i].Node, node)) continue;
+            return SegmentBounds(model, segments[i]);
+        }
+
+        return null;
+    }
+
+    /// <summary>Axis-aligned box enclosing a ring segment.</summary>
+    private static Rect SegmentBounds(SunburstModel model, in SunburstSegment segment)
+    {
+        // Sample the arc rather than solving for extrema: a handful of points is plenty for a
+        // highlight box and keeps the quadrant-crossing cases from needing special handling.
+        double minX = double.MaxValue, minY = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue;
+
+        const int samples = 24;
+        for (var i = 0; i <= samples; i++)
+        {
+            var angle = segment.StartAngle + (segment.EndAngle - segment.StartAngle) * i / samples;
+            var sin = Math.Sin(angle);
+            var cos = Math.Cos(angle);
+
+            foreach (var radius in new[] { (double)segment.InnerRadius, segment.OuterRadius })
+            {
+                var x = model.CentreX + radius * sin;
+                var y = model.CentreY - radius * cos;
+                minX = Math.Min(minX, x);
+                maxX = Math.Max(maxX, x);
+                minY = Math.Min(minY, y);
+                maxY = Math.Max(maxY, y);
+            }
+        }
+
+        return new Rect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>Node under a pixel, whichever chart is showing.</summary>
+    private FileNode? NodeAtPixel(int x, int y)
+    {
+        if (_raster is { } raster) return raster.NodeAt(x, y);
+        if (_sunburstModel is { } model && _sunburstOwners is { } owners)
+            return SunburstLayout.HitTest(model, owners, x, y)?.Node;
         return null;
     }
 
@@ -295,16 +402,15 @@ public sealed class TreemapControl : Control
     {
         base.OnPointerMoved(e);
 
-        var raster = _raster;
-        if (raster is null) return;
+        if (_raster is null && _sunburstModel is null) return;
 
         var (x, y) = ToRasterPoint(e.GetPosition(this));
-        var node = raster.NodeAt(x, y);
+        var node = NodeAtPixel(x, y);
 
         if (ReferenceEquals(node, _hovered)) return;
 
         _hovered = node;
-        _hoverRect = FindTileRect(node);
+        _hoverRect = FindShapeBounds(node);
         ToolTip.SetTip(this, node is null ? null : BuildTooltip(node));
         InvalidateVisual();
     }
@@ -323,11 +429,10 @@ public sealed class TreemapControl : Control
         base.OnPointerPressed(e);
         Focus();
 
-        var raster = _raster;
-        if (raster is null) return;
+        if (_raster is null && _sunburstModel is null) return;
 
         var (x, y) = ToRasterPoint(e.GetPosition(this));
-        var node = raster.NodeAt(x, y);
+        var node = NodeAtPixel(x, y);
         if (node is null) return;
 
         SelectedNode = node;

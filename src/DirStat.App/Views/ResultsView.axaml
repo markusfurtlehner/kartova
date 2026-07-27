@@ -18,6 +18,9 @@
     <StreamGeometry x:Key="IconOptions">M 2.5,4.5 L 13.5,4.5 M 2.5,8 L 13.5,8 M 2.5,11.5 L 13.5,11.5</StreamGeometry>
     <!-- Two offset sheets: the universal shorthand for a copy. -->
     <StreamGeometry x:Key="IconDuplicates">M 5.5,2.5 L 13.5,2.5 L 13.5,10.5 M 2.5,5.5 L 10.5,5.5 L 10.5,13.5 L 2.5,13.5 Z</StreamGeometry>
+    <!-- A ring with a wedge: the two chart shapes in one mark. -->
+    <StreamGeometry x:Key="IconChart">M 8,2 A 6,6 0 1 1 2,8 M 8,4.5 L 8,8 L 11,8</StreamGeometry>
+    <StreamGeometry x:Key="IconImage">M 2.5,3.5 L 13.5,3.5 L 13.5,12.5 L 2.5,12.5 Z M 2.5,10 L 6,7 L 9,10 L 11,8.5 L 13.5,10.5</StreamGeometry>
   </UserControl.Resources>
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -85,7 +88,29 @@
             </StackPanel>
           </Button>
 
+          <Button Classes="ghost" Padding="11,6" Command="{Binding ShowInsightsCommand}"
+                  ToolTip.Tip="{l:T Results.InsightsTooltip}">
+            <TextBlock Text="{l:T Results.Insights}" VerticalAlignment="Center" />
+          </Button>
+
+          <Button Classes="ghost" Padding="11,6" Command="{Binding ShowComparisonCommand}"
+                  ToolTip.Tip="{l:T Results.SaveSnapshotTooltip}">
+            <TextBlock Text="{l:T Snap.Compare}" VerticalAlignment="Center" />
+          </Button>
+
           <Border Width="1" Height="20" Margin="3,0" Background="{DynamicResource BorderSubtle}" />
+
+          <Button Classes="ghost icon" Command="{Binding ToggleChartCommand}"
+                  ToolTip.Tip="{l:T Results.ToggleChart}">
+            <Path Data="{StaticResource IconChart}" Stroke="{DynamicResource TextSecondary}"
+                  StrokeThickness="1.5" Width="16" Height="16" Stretch="None" />
+          </Button>
+
+          <Button Classes="ghost icon" Command="{Binding SaveChartImageCommand}"
+                  ToolTip.Tip="{l:T Results.ExportImageTooltip}">
+            <Path Data="{StaticResource IconImage}" Stroke="{DynamicResource TextSecondary}"
+                  StrokeThickness="1.5" StrokeJoin="Round" Width="16" Height="16" Stretch="None" />
+          </Button>
 
           <Button Classes="ghost icon" Command="{Binding ZoomOutCommand}" ToolTip.Tip="{l:T Results.ZoomOut}">
             <Path Data="{StaticResource IconUp}" Stroke="{DynamicResource TextSecondary}"
@@ -206,7 +231,7 @@
       <Border Grid.Column="2" Background="{DynamicResource SurfaceSunken}">
         <Grid RowDefinitions="Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="14,11,14,7">
-            <TextBlock Grid.Column="0" Classes="caption" Text="{l:T Results.Treemap}" />
+            <TextBlock Grid.Column="0" Classes="caption" Text="{Binding IsSunburst, Converter={x:Static views:Converters.ChartTitle}}" />
             <TextBlock Grid.Column="1" Classes="tertiary" FontSize="11"
                        HorizontalAlignment="Right"
                        Text="{l:T Results.ChartHint}" />
@@ -216,6 +241,7 @@
                                 Root="{Binding TreemapRoot}"
                                 SelectedNode="{Binding SelectedNode, Mode=TwoWay}"
                                 ZoomCommand="{Binding ZoomIntoCommand}"
+                                Sunburst="{Binding IsSunburst}"
                                 CushionShading="True"
                                 DirectoryFrames="True">
             <views:TreemapControl.ContextMenu>
@@ -326,6 +352,10 @@
                   HorizontalContentAlignment="Left"
                   Command="{Binding ToggleThemeCommand}"
                   Content="{l:T Options.Theme}" />
+          <Button Classes="ghost" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Left"
+                  Command="{Binding ToggleExclusionsCommand}"
+                  Content="{l:T Options.Exclusions}" />
         </StackPanel>
 
         <Border Classes="divider" />
@@ -338,9 +368,84 @@
       </StackPanel>
     </Border>
 
+    <!-- ================================================ Exclusions ================================================ -->
+    <Border Grid.Row="1" IsVisible="{Binding IsExclusionsOpen}"
+            HorizontalAlignment="Right" VerticalAlignment="Top"
+            Margin="0,10,14,0" Width="380" Padding="18"
+            Classes="card fade-in"
+            Background="{DynamicResource SurfaceOverlay}"
+            BorderBrush="{DynamicResource BorderStrong}"
+            BoxShadow="0 18 48 0 #99000000">
+      <StackPanel Spacing="14">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="subtitle" Text="{l:T Excl.Title}" />
+          <TextBlock Classes="tertiary" FontSize="11.5" TextWrapping="Wrap"
+                     Text="{l:T Excl.Subtitle}" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0" Text="{Binding NewExclusion}"
+                   Watermark="{l:T Excl.Placeholder}" />
+          <Button Grid.Column="1" Classes="accent" Content="{l:T Common.Add}"
+                  Command="{Binding AddExclusionCommand}" />
+        </Grid>
+
+        <TextBlock Classes="tertiary" FontSize="11.5" Text="{l:T Excl.Empty}"
+                   IsVisible="{Binding !Exclusions.Count}" />
+
+        <ItemsControl ItemsSource="{Binding Exclusions}" IsVisible="{Binding Exclusions.Count}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <Border Background="{DynamicResource SurfaceBase}" CornerRadius="6"
+                      Padding="10,6" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"
+                             FontSize="12" />
+                  <Button Grid.Column="1" Classes="ghost" Padding="7,2" FontSize="11"
+                          Content="{l:T Common.Remove}"
+                          Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveExclusionCommand}"
+                          CommandParameter="{Binding}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Classes="divider" />
+
+        <StackPanel Spacing="7">
+          <TextBlock Classes="caption" Text="{l:T Excl.Suggestions}" />
+          <ItemsControl ItemsSource="{Binding SuggestedExclusions}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Button Classes="ghost suggestion" Content="{Binding}"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).AddExclusionCommand}"
+                        CommandParameter="{Binding}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
   </Grid>
 
   <UserControl.Styles>
+    <Style Selector="Button.suggestion">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBase}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+
     <Style Selector="Button.crumb">
       <Setter Property="Padding" Value="7,4" />
       <Setter Property="FontSize" Value="12" />

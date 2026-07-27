@@ -100,7 +100,12 @@ public static class SunburstLayout
         if (radius <= 8) return SunburstModel.Empty(root);
 
         var hole = radius * options.HoleFraction;
-        var ringThickness = (radius - hole) / Math.Max(1, options.MaxDepth);
+
+        // Divide the radius by how deep the tree actually goes, not by the cap. A three-level
+        // tree drawn in sevenths would leave most of the circle empty and the rings too thin
+        // to read, which is the opposite of what this view is for.
+        var effectiveDepth = Math.Clamp(MeasureDepth(root, options.MaxDepth), 1, options.MaxDepth);
+        var ringThickness = (radius - hole) / effectiveDepth;
 
         var segments = new List<SunburstSegment>(1024);
         var deepest = 0;
@@ -119,6 +124,35 @@ public static class SunburstLayout
             HoleRadius = hole,
             MaxDepth = deepest,
         };
+    }
+
+    /// <summary>
+    /// How many levels the tree actually has below the root, stopping at <paramref name="cap"/>.
+    /// </summary>
+    /// <remarks>
+    /// Only branches large enough to survive the sliver cull matter, so this follows the
+    /// largest child at each level rather than exploring everything — the deepest chain of
+    /// hair-thin slices would otherwise stretch the rings for segments nobody can see.
+    /// </remarks>
+    private static int MeasureDepth(FileNode root, int cap)
+    {
+        var depth = 0;
+        var node = root;
+
+        while (depth < cap)
+        {
+            var children = node.Children;
+            if (children is null || children.Length == 0) break;
+
+            // Children arrive sorted by descending size, so the first is the widest slice.
+            var largest = children.FirstOrDefault(c => c.Size > 0 && !c.IsSynthetic);
+            if (largest is null) break;
+
+            depth++;
+            node = largest;
+        }
+
+        return depth;
     }
 
     /// <summary>Distributes a node's children across the angular span it occupies.</summary>
