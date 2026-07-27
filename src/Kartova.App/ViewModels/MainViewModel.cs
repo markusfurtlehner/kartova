@@ -1050,6 +1050,64 @@ public sealed partial class MainViewModel : ObservableObject
         if (!result.Success) StatusMessage = result.Message ?? string.Empty;
     }
 
+    // ------------------------------------------------------------ update check
+
+    [ObservableProperty] private bool _isCheckingForUpdate;
+    [ObservableProperty] private string _updateMessage = string.Empty;
+    [ObservableProperty] private bool _updateFound;
+
+    private string? _releaseUrl;
+
+    /// <summary>True once a check has run, so the dialog stays quiet until then.</summary>
+    public bool HasCheckedForUpdate => UpdateMessage.Length > 0;
+
+    partial void OnUpdateMessageChanged(string value) => OnPropertyChanged(nameof(HasCheckedForUpdate));
+
+    /// <summary>
+    /// Asks GitHub whether a newer release exists, and reports what it found.
+    /// </summary>
+    /// <remarks>
+    /// Nothing is downloaded or installed. This runs only on an explicit press: the request
+    /// discloses the machine's address to GitHub, which should be the user's choice rather
+    /// than something that happens because a dialog was opened.
+    /// </remarks>
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        IsCheckingForUpdate = true;
+        UpdateFound = false;
+        UpdateMessage = Loc.T("About.Checking");
+
+        try
+        {
+            var result = await UpdateChecker.CheckAsync();
+            _releaseUrl = result.Url;
+
+            UpdateMessage = result.Status switch
+            {
+                UpdateStatus.UpdateAvailable => Loc.Format("About.UpdateAvailable", result.LatestVersion ?? string.Empty),
+                UpdateStatus.UpToDate => Loc.T("About.UpToDate"),
+                UpdateStatus.NoReleases => Loc.T("About.NoReleases"),
+                UpdateStatus.Offline => Loc.T("About.Offline"),
+                UpdateStatus.RateLimited => Loc.T("About.RateLimited"),
+                _ => Loc.T("About.CheckFailed"),
+            };
+
+            UpdateFound = result.Status == UpdateStatus.UpdateAvailable;
+        }
+        finally
+        {
+            IsCheckingForUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenRelease()
+    {
+        var result = ShellService.OpenUrl(_releaseUrl ?? AppInfo.ReleasesUrl);
+        if (!result.Success) StatusMessage = result.Message ?? string.Empty;
+    }
+
     [RelayCommand]
     private void ShowAbout()
     {
@@ -1058,6 +1116,11 @@ public sealed partial class MainViewModel : ObservableObject
         IsSettingsOpen = false;
         IsExclusionsOpen = false;
         AboutDetailsCopied = false;
+
+        // A result from an earlier visit may be stale by now, so the dialog opens silent.
+        UpdateMessage = string.Empty;
+        UpdateFound = false;
+
         IsAboutOpen = true;
     }
 

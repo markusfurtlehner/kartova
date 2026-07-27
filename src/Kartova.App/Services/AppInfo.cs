@@ -26,6 +26,9 @@ public static class AppInfo
     public static string RepositoryLabel { get; } =
         RepositoryUrl.Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Where releases are listed, used when a check finds a newer one.</summary>
+    public static string ReleasesUrl { get; } = $"{RepositoryUrl}/releases";
+
     /// <summary>Three-part version, without the assembly's trailing revision field.</summary>
     public static string Version { get; } =
         typeof(AppInfo).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";

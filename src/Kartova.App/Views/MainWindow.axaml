@@ -155,13 +155,40 @@
                        VerticalAlignment="Top" />
                 <StackPanel Spacing="4" VerticalAlignment="Center">
                   <TextBlock Text="{Binding AboutName}" FontSize="25" FontWeight="SemiBold" />
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <TextBlock Text="{l:T About.Version}" Classes="tertiary" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                    <TextBlock Text="{l:T About.Version}" Classes="tertiary" FontSize="12"
+                               VerticalAlignment="Center" />
                     <TextBlock Text="{Binding AboutVersion}" Classes="secondary"
-                               FontSize="12" FontWeight="SemiBold" />
+                               FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+
+                    <!-- Manual only. Nothing contacts GitHub unless this is pressed. -->
+                    <Button Classes="link" Margin="6,0,0,0"
+                            Command="{Binding CheckForUpdatesCommand}"
+                            IsEnabled="{Binding !IsCheckingForUpdate}">
+                      <TextBlock Text="{l:T About.CheckUpdates}" FontSize="11.5"
+                                 Foreground="{DynamicResource AccentBase}" />
+                    </Button>
                   </StackPanel>
                 </StackPanel>
               </StackPanel>
+
+              <!-- Result of a check: one sentence, plus a link only when there is something
+                   to go and get. -->
+              <Border IsVisible="{Binding HasCheckedForUpdate}"
+                      Background="{DynamicResource SurfaceRaised}"
+                      BorderBrush="{DynamicResource BorderSubtle}"
+                      BorderThickness="1" CornerRadius="7" Padding="13,10">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="{Binding UpdateMessage}" Classes="secondary" FontSize="12"
+                             TextWrapping="Wrap" VerticalAlignment="Center" />
+                  <Button Classes="link" IsVisible="{Binding UpdateFound}"
+                          Command="{Binding OpenReleaseCommand}"
+                          ToolTip.Tip="{l:T About.OpenRelease}">
+                    <TextBlock Text="{l:T About.OpenRelease}" FontSize="12"
+                               Foreground="{DynamicResource AccentBase}" />
+                  </Button>
+                </StackPanel>
+              </Border>
 
               <TextBlock Text="{l:T About.Tagline}" Classes="secondary"
                          TextWrapping="Wrap" LineHeight="20" />
