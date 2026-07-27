@@ -103,7 +103,9 @@ public sealed partial class InsightGroupViewModel : ObservableObject
         }));
 
     public string SizeText => SizeFormatter.Format(Group.TotalBytes);
-    public string CountText => Loc.Format("Insights.Items", SizeFormatter.FormatCount(Group.Count));
+    // "1 items" reads like a bug, so the noun follows the count.
+    public string CountText =>
+        Loc.Format(Group.Count == 1 ? "Insights.Item" : "Insights.Items", SizeFormatter.FormatCount(Group.Count));
 
     public long SelectedBytes => Items.Where(i => i.IsSelected).Sum(i => i.Node.Size);
     public bool HasSelection => Items.Any(i => i.IsSelected);
@@ -232,7 +234,7 @@ public sealed partial class InsightsViewModel : ObservableObject
         var confirmed = ConfirmAsync is null || await ConfirmAsync(
             Loc.T("Dup.ConfirmTitle"),
             Loc.Format("Dup.ConfirmBody",
-                Loc.Format("Insights.Items", SizeFormatter.FormatCount(doomed.Count)),
+                Loc.Format(doomed.Count == 1 ? "Insights.Item" : "Insights.Items", SizeFormatter.FormatCount(doomed.Count)),
                 SizeFormatter.Format(bytes)));
 
         if (!confirmed) return;
@@ -252,10 +254,10 @@ public sealed partial class InsightsViewModel : ObservableObject
 
             StatusMessage = failures == 0
                 ? Loc.Format("Dup.Moved",
-                    Loc.Format("Insights.Items", SizeFormatter.FormatCount(removed.Count)),
+                    Loc.Format(removed.Count == 1 ? "Insights.Item" : "Insights.Items", SizeFormatter.FormatCount(removed.Count)),
                     SizeFormatter.Format(bytes))
                 : Loc.Format("Dup.MovedPartial",
-                    Loc.Format("Insights.Items", SizeFormatter.FormatCount(removed.Count)), failures);
+                    Loc.Format(removed.Count == 1 ? "Insights.Item" : "Insights.Items", SizeFormatter.FormatCount(removed.Count)), failures);
 
             foreach (var group in Groups.ToList())
             {

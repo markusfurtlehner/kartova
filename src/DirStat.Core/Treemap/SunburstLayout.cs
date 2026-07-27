@@ -57,8 +57,11 @@ public sealed class SunburstOptions
     /// <summary>How many rings to draw outward from the centre.</summary>
     public int MaxDepth { get; set; } = 7;
 
-    /// <summary>Segments narrower than this many radians are dropped as unreadable.</summary>
-    public double MinimumSweep { get; set; } = 0.004;
+    /// <summary>
+    /// Segments narrower than this many radians are dropped. Hairline slices are not merely
+    /// unreadable, they turn a deep tree into visual static.
+    /// </summary>
+    public double MinimumSweep { get; set; } = 0.008;
 
     /// <summary>Fraction of the radius left empty at the centre, where the root label sits.</summary>
     public double HoleFraction { get; set; } = 0.16;
@@ -95,8 +98,10 @@ public static class SunburstLayout
         var centreX = width / 2.0;
         var centreY = height / 2.0;
 
-        // A small inset keeps the outermost ring from touching the edge.
-        var radius = Math.Min(width, height) / 2.0 - 4;
+        // A proportional margin rather than a fixed one. Filling the pane edge to edge reads
+        // as clipped whatever the actual geometry, and the outermost ring is where the deepest,
+        // most fragmented segments land — exactly what needs room to be legible.
+        var radius = Math.Min(width, height) / 2.0 * 0.86;
         if (radius <= 8) return SunburstModel.Empty(root);
 
         var hole = radius * options.HoleFraction;

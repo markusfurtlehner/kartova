@@ -214,6 +214,23 @@ public static partial class Strings
         ["Excl.Empty"] = "Sin exclusiones. Se analizan todas las carpetas.",
         ["Excl.Suggestions"] = "HABITUALES",
 
+        ["Insights.Item"] = "{0} elemento",
+
+        // --------------------------------------------------------------- families
+        ["Family.Video"] = "Vídeo",
+        ["Family.Image"] = "Imágenes",
+        ["Family.Audio"] = "Audio",
+        ["Family.Archive"] = "Archivos comprimidos",
+        ["Family.Document"] = "Documentos",
+        ["Family.Code"] = "Código",
+        ["Family.Web"] = "Web",
+        ["Family.Executable"] = "Programas",
+        ["Family.Database"] = "Bases de datos",
+        ["Family.Font"] = "Fuentes",
+        ["Family.DiskImage"] = "Imágenes de disco",
+        ["Family.System"] = "Sistema",
+        ["Family.Other"] = "Otros",
+
         // -------------------------------------------------------------- tooltips
         ["Tooltip.Size"] = "Tamaño",
         ["Tooltip.OnDisk"] = "En disco",

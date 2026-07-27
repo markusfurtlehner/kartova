@@ -1,202 +1,265 @@
+<div align="center">
+
+<img src="src/DirStat.App/Assets/dirstat-128.png" width="88" alt="DirStat">
+
 # DirStat
 
-A disk usage analyser for Windows, macOS and Linux. It maps every byte on a volume to a
-treemap you can click through, so the thing eating your disk is visible in a glance rather
-than a hunt.
+**A disk usage analyser for Windows, macOS and Linux.**
+One self-contained file per platform. Nothing to install, no runtime to fetch.
 
-Feature parity with WinDirStat, QDirStat and SpaceSniffer, rebuilt on a modern rendering
-stack: one self-contained executable per platform, nothing to install, no runtime to fetch.
+[Install](#install) · [What it does](#what-it-does) · [Command line](#command-line) · [Why](#why) · [Build](#build)
 
-![DirStat scanning a Windows volume](docs/screenshot.png)
+</div>
 
-## Why
+---
 
-The established tools are functionally excellent and visually stuck in 2005. They also get
-sluggish on large volumes, because they draw the treemap as retained visual elements and
-walk the tree on every pointer move.
+DirStat maps every byte on a volume to a picture you can click through, so the thing eating
+your disk is visible at a glance rather than after a hunt.
 
-DirStat keeps their capabilities and changes the engine underneath:
+It has the capabilities of WinDirStat, QDirStat and SpaceSniffer — and adds the things they
+never had: a duplicate finder that compares contents, a snapshot diff that answers *what
+changed*, and an insights pass that names the rebuildable clutter.
 
-- **Scanning** runs across a lock-free work stack, enumerating with a struct projection that
-  allocates nothing per entry beyond the node itself. Roughly **95,000 files/second** on a
-  warm NTFS volume — a 187,000-file, 50 GiB `C:\Windows` scan completes in about 2 seconds.
-- **The treemap is rasterized, not composed.** Layout cost is bounded by canvas pixels
-  rather than by file count, so a ten-million-file scan lays out as fast as a small one.
-  A 1920×1080 map takes ~18 ms to lay out and ~60 ms to rasterize, on a background thread.
-- **Interaction is free.** The renderer emits an owner buffer alongside the pixels, so
-  "which file is under the cursor" is one array lookup. Hover and selection are overlays;
-  they never re-rasterize anything.
+![The treemap](docs/img/02-treemap.png)
+
+---
 
 ## Install
 
-Download the build for your platform from [Releases](../../releases) and run it. There is
-nothing else to install.
+Download for your platform from [Releases](../../releases) and run it. There is nothing else
+to install.
 
 | Platform | File | Notes |
 |---|---|---|
 | Windows | `DirStat.exe` | x64 and arm64 |
-| macOS | `DirStat.app` | x64 and arm64. Unsigned, so the first launch needs right-click → Open |
-| Linux | `DirStat` | x64 and arm64. Needs `libX11`, `libICE`, `libSM` and `fontconfig`, present on every desktop install |
+| macOS | `DirStat.app` | x64 and arm64. Unsigned — first launch needs right-click → Open |
+| Linux | `DirStat` | x64 and arm64. Needs `libX11`, `libICE`, `libSM`, `fontconfig` — present on every desktop install |
 
-On Linux, DirStat needs a desktop session — `DISPLAY` or `WAYLAND_DISPLAY` must be set. If
-neither is, it says so and exits rather than sitting there showing nothing. Over SSH use
-`ssh -X`; under WSL run it from a login shell so WSLg sets the environment, or
-`export DISPLAY=:0` yourself.
+On Linux DirStat needs a desktop session; if `DISPLAY` and `WAYLAND_DISPLAY` are both unset it
+says so and exits rather than sitting there showing nothing.
 
-Windows and macOS get a custom title bar. Linux window managers are not obliged to honour
-an extended client area and several decorate the window anyway, so there DirStat keeps the
-system caption instead of stacking two title bars.
+---
 
-Or build it yourself:
+## What it does
 
-```sh
-git clone <this repo> && cd DirStat
-./build/publish.sh          # or: pwsh ./build/publish.ps1
-```
+### Pick a drive, or any folder
 
-Pass `all` to build every platform at once. Output lands in `artifacts/`.
+Capacity rings are graded by how full a volume is, so a disk in trouble is visible before you
+read a number. Several folders can be scanned together.
 
-## Using it
+![The drive picker](docs/img/01-drives.png)
 
-Pick a drive, or choose any folder — several at once if you like. You can also pass paths on
-the command line: `DirStat /home/me/projects`.
+**Roughly 95,000 files per second.** A 187,000-file, 50 GiB `C:\Windows` scan finishes in about
+two seconds.
 
-The results screen has three panes that stay in sync. Selecting anything in one selects it
-in the other two, which is the interaction that makes this class of tool worth using.
+### Read it as a treemap or a sunburst
 
-**Folders** — sortable tree with size, share of parent and item counts. Click a column
-header to sort; click it again to reverse.
+Every file drawn in proportion, coloured by type. The treemap uses cushion shading so nesting
+stays readable; the sunburst turns depth into distance from the centre, which shows the shape
+of a hierarchy in a way rectangles cannot.
 
-**Treemap** — every file drawn proportional to its size, coloured by type, with cushion
-shading so nesting stays readable. Click to select, double-click to zoom in, `Backspace` to
-zoom out, arrow keys to walk the hierarchy.
+Click to select, double-click to zoom, arrow keys to walk. Either view saves as a PNG.
 
-**File types** — every extension in the scan, largest first. Click one to isolate it: the
-tree and the treemap narrow to just those files, so "where are all my videos" takes one
-click rather than a typed query.
+![The sunburst](docs/img/03-sunburst.png)
 
-Right-click anything for open, reveal in file manager, open terminal here, copy path,
-rescan, and delete.
+Selecting anything in one pane selects it in all three — the interaction that makes this class
+of tool worth using. File types are grouped into families, because hundreds of extensions read
+as noise while a dozen families read as an answer.
 
-### Finding duplicates
-
-**Duplicates** in the toolbar searches whatever you scanned for files — and whole folders —
-that you have more than one copy of. It compares contents, not names: two files match only
-when every byte does, and two folders match only when their entire trees do.
-
-Results are grouped and ordered by how much space you would get back. Expand a group to see
-where each copy lives, then tick the ones to remove, or apply a rule to every group at once:
-keep the oldest, the newest, or the copy nearest the root. One copy of each group is always
-kept — ticking every copy is not possible, because that would delete the data rather than
-de-duplicate it. Removal goes to the trash, and the scan updates itself afterwards.
-
-When two folders match, only the outermost pair is listed. Every subdirectory inside them
-matches too, and listing all of those would bury the one finding worth acting on. Files
-inside a reported duplicate folder are likewise not listed again — they go with the folder,
-so counting them separately would double-count the space.
-
-Reading every byte on a volume would cost far more than the scan itself, so the search is
-staged. Files are grouped by size first, which is free because the scan already measured
-them and two files of different length cannot match; then a 16 KB prefix is hashed, since
-files that differ tend to differ early; only what is still ambiguous is read in full. A tree
-of uniquely-sized files is answered without a single read.
-
-### Filtering
-
-The filter box takes a small query language. Terms combine as an intersection.
+### Filter with a small query language
 
 | Term | Matches |
 |---|---|
 | `report` | names containing "report" |
-| `report*.pdf` | wildcard name match, anchored to the whole name |
+| `report*.pdf` | wildcard, anchored to the whole name |
 | `*.mp4` | files of that type |
 | `>100mb` `<1gb` | size bounds — `k`, `m`, `g`, `t` suffixes |
-| `after:2025-01-01` `before:2025-06-01` | modification date bounds |
+| `after:2025-01-01` `before:2025-06-01` | modification dates |
 
-So `*.mp4 >500mb after:2024-01-01` finds big, recent video files.
+So `*.mp4 >500mb after:2024-01-01` finds big, recent video files. Filtering builds a view
+rather than rescanning, so clearing the box restores the full scan instantly.
 
-Filtering builds a filtered view rather than rescanning, so clearing the box restores the
-full scan instantly.
+### Find what you have twice
 
-### Keyboard
+Contents, not names: two files match only when every byte does, two folders only when their
+entire trees do. Results are ranked by recoverable space.
+
+![The duplicate finder](docs/img/04-duplicates.png)
+
+Apply a rule to every group at once — keep the oldest, the newest, or the copy nearest the
+root — then remove the rest to the trash. **One copy of each group is always kept**; ticking
+every copy is refused, because that deletes the data rather than de-duplicating it.
+
+Reading every byte would cost more than the scan itself, so the search is staged: group by
+size (free — the scan already measured everything, and different lengths cannot match), then
+hash a 16 KB prefix (files that differ tend to differ early), then read in full only what is
+still ambiguous. **A tree of uniquely-sized files is answered without a single read.**
+
+Hard links are excluded. They already share their bytes, so removing one recovers nothing.
+
+### See what is worth a second look
+
+Stale files, folders empty all the way down, zero-byte files, and recognised rebuildable
+clutter — all from data the scan already collected, so it costs one traversal and touches no
+files.
+
+![The insights warning](docs/img/05-insights-start.png)
+
+This is the one screen that opens with a warning rather than a result, because a tool that
+tells you what to delete is only useful if it is honest about being a guess.
+
+![Insights](docs/img/06-insights.png)
+
+Every category says what it is and how safe it is to remove:
+
+| Badge | Meaning |
+|---|---|
+| **Rebuilt automatically** | Regenerated on next use. Removing costs time, never data. |
+| **Usually disposable** | Almost certainly safe, but worth a glance. |
+| **Check carefully** | Often large and often unwanted, but may be deliberate. |
+
+DirStat identifies these by name and shape, not by asking the program that made them — so it
+classifies and explains, and the judgement stays with you. Nothing in the list is a document,
+a download, or anything you made by hand. There is no one-click purge, on purpose.
+
+### Answer "what changed?"
+
+Save a snapshot, then compare a later scan against it. Individual changes are ranked by
+magnitude, with growth reading warm and shrinkage cool.
+
+For something **added or removed** the outermost folder is named — "this whole folder is new"
+beats a line per file inside it. For something that **grew or shrank** the innermost file is —
+"this database grew by 4 GB" beats every folder above it repeating the same number.
+
+A rename reads as one removal and one addition. Nothing on disk says they were the same thing,
+and guessing would be worse than being plain about it.
+
+### Four languages
+
+English, German, French and Spanish, switchable from the title bar. The window retranslates
+immediately; a first run follows your operating system.
+
+### Everything else
+
+Right-click anything for open, reveal in file manager, open terminal here, copy path, rescan,
+and delete. Exclusion rules skip folder names wherever they appear. Export to CSV or JSON.
+Dark and light themes.
 
 | Key | Action |
 |---|---|
 | `Enter` | Zoom into the selected folder |
-| `Backspace` | Zoom out one level |
-| Arrow keys | Walk the treemap |
+| `Backspace` | Zoom out |
+| Arrows | Walk the chart |
 | `Ctrl+F` | Focus the filter |
+| `Ctrl+C` | Copy the selected path |
 | `F5` | Rescan the selection |
-| `Delete` | Move to trash |
-| `Shift+Delete` | Delete permanently |
+| `Delete` / `Shift+Delete` | Trash / delete permanently |
 
-## Behaviour worth knowing
+---
 
-**Links are never followed.** Symlinks, junctions and mount points appear in the tree,
-flagged, at zero size. Following them would both risk infinite cycles and double-count
-content reachable by two paths. Their targets are counted where they really live.
+## Command line
 
-**Hard links can be deduplicated**, so shared content is counted once. This is off by
-default because it costs a metadata query per file, roughly halving scan throughput.
+The scanner and every analysis are UI-free, so DirStat runs headless on a build agent or over
+SSH with no display at all.
 
-**Unreadable folders are flagged, never fatal.** The count appears in the status bar, and
-their contents surface as *Unknown* space — the gap between what the volume reports as used
-and what the scan could actually see.
-
-**Cancelling still gives you results.** The partial tree is aggregated and displayed.
-
-**Deletion goes to the platform trash** by default. On macOS and Linux this is an explicit
-move into the trash folder rather than a scripted Finder call, so it does not trigger an
-automation permission prompt. Linux follows the freedesktop.org trash specification, writing
-the `.trashinfo` record before the move so a crash cannot orphan the file.
-
-## Architecture
+```sh
+dirstat --scan /home/me --duplicates          # scan and report duplicates
+dirstat --scan C:\ --snapshot --quiet         # store a snapshot for later
+dirstat --compare monday.dirstat --scan C:\   # what changed since Monday
+dirstat --scan . --export report.json         # JSON, or CSV for any other extension
+dirstat --list-snapshots                      # what has been stored
+```
 
 ```
-src/DirStat.Core        scanning, treemap layout and rasterization, filtering, export
-src/DirStat.App         Avalonia views, view models, theming, shell integration
+--scan <path>          directory to scan
+--export <file>        write results; .json for JSON, anything else CSV
+--snapshot [file]      store the scan for later comparison
+--duplicates           also report duplicate files and folders
+--insights             also report stale files, empty folders and junk
+--min-size <bytes>     smallest file the duplicate search considers
+--exclude a,b,c        directory names to skip
+--quiet                print only what was asked for
+--compare a[,b]        compare two snapshots, or one against --scan
+```
+
+---
+
+## Why
+
+The established tools are functionally excellent and visually stuck in 2005. They also get
+sluggish on large volumes, because they draw the treemap as retained visual elements and walk
+the tree on every pointer move.
+
+DirStat keeps their capabilities and changes the engine underneath:
+
+**Scanning** runs across a lock-free work stack, enumerating with a struct projection that
+allocates nothing per entry beyond the node itself.
+
+**The chart is rasterized, not composed.** Layout cost is bounded by canvas pixels rather than
+by file count, so a ten-million-file scan lays out as fast as a small one. A 1920×1080 treemap
+takes ~18 ms to lay out and ~60 ms to rasterize, on a background thread.
+
+**Interaction is free.** The renderer emits an owner buffer alongside the pixels, so "which
+file is under the cursor" is one array lookup. Hover and selection are overlays; they never
+re-rasterize anything.
+
+A few decisions that shape the rest:
+
+- **`FileNode` stores only its own path segment**, rebuilding full paths by walking parents. A
+  million-node scan costs tens of megabytes rather than hundreds. Extension strings are
+  interned, turning millions of allocations into thousands.
+- **Sizes roll up in one reverse-breadth-first pass** after the walk rather than interlocked
+  adds up the parent chain during it — zero contention on the root.
+- **Native metadata calls self-test before they are trusted.** Unix `struct stat` layouts vary
+  by kernel, libc and architecture, so `NativeFs` probes a temporary file of known size and
+  disables the whole native path if the fields do not read back correctly. A wrong guess
+  degrades to a missing feature rather than to silently wrong numbers.
+- **Tile bounds round to nearest, not outward.** Because rounding is monotonic, one tile's
+  right edge lands on exactly the same pixel column as its neighbour's left edge — adjacent
+  tiles neither overlap nor leave a seam, and every pixel has one truthful owner.
+- **Links are never followed.** Symlinks, junctions and mount points appear in the tree,
+  flagged, at zero size. Following them would risk cycles and double-count content reachable
+  by two paths.
+- **Unreadable folders are flagged, never fatal**, and surface as *Unknown* space — the gap
+  between what the volume reports as used and what the scan could see.
+- **Cancelling still gives you results.** The partial tree is aggregated and displayed.
+- **Deletion goes to the platform trash.** On macOS and Linux that is an explicit move into
+  the trash folder rather than a scripted Finder call, so it does not trigger an automation
+  permission prompt. Linux follows the freedesktop.org specification, writing the `.trashinfo`
+  record before the move so a crash cannot orphan the file.
+
+---
+
+## Build
+
+```
+src/DirStat.Core        scanning, layout, rasterization, duplicates, insights, snapshots
+src/DirStat.App         Avalonia views, view models, theming, shell integration, CLI
 tests/DirStat.Core.Tests
 ```
 
-`Core` has no UI dependency and carries the whole test suite. The duplicate finder lives
-there too, so it is testable without a window.
-
-A few decisions that shape everything else:
-
-**`FileNode` stores only its own path segment**, rebuilding full paths by walking parents.
-A million-node scan costs tens of megabytes rather than hundreds. Extension strings are
-interned, turning millions of allocations into thousands.
-
-**Sizes roll up in a single reverse-breadth-first pass** after the walk, rather than
-interlocked adds up the parent chain during it. That trades a brief post-pass for zero
-contention on the root.
-
-**Native metadata calls self-test before they are trusted.** Unix `struct stat` layouts vary
-by kernel, libc and architecture, so `NativeFs` probes a temporary file of known size and
-disables the whole native path if the fields do not read back correctly. A wrong guess
-degrades to a missing feature rather than to silently wrong numbers.
-
-**Tile bounds round to nearest, not outward.** Because rounding is monotonic, one tile's
-right edge lands on exactly the same pixel column as its neighbour's left edge — so adjacent
-tiles neither overlap nor leave a seam, and every pixel has exactly one truthful owner.
-
-**Grid sorting never reorders `FileNode.Children`.** The squarified layout depends on
-descending size order, so the directory grid keeps its own ordering and leaves the
-underlying arrays untouched.
-
-## Development
+`Core` has no UI dependency and carries the whole test suite.
 
 ```sh
-dotnet build                                    # build everything
-dotnet test                                     # 111 tests
-dotnet run --project src/DirStat.App            # run it
+dotnet build                              # build everything
+dotnet test                               # 174 tests
+dotnet run --project src/DirStat.App      # run it
+
+./build/publish.sh                        # self-contained, host platform
+./build/publish.sh all                    # all six platforms → artifacts/
 ```
 
-The test suite covers scan aggregation, cancellation, exclusions, symlink handling,
-hard-link dedup, volume enumeration, the filter query language, size formatting, duplicate
-detection including folder matching and nested suppression, and the treemap layout
-invariants: full coverage, containment, no overlap, and the pre-order emission the renderer
-depends on to carry cushion surfaces down the tree.
+`pwsh ./build/publish.ps1` does the same on Windows. Tagging `v*` builds all six platforms in
+CI and attaches them to the release with checksums.
+
+The suite covers scan aggregation, cancellation, exclusions, symlink and hard-link handling,
+volume enumeration, the filter query language, duplicate detection including folder matching
+and nested suppression, snapshot round-trips, comparison semantics, junk classification, size
+formatting, translation-catalogue parity, and the layout invariants for both charts: full
+coverage, containment, no overlap, and the pre-order emission the treemap renderer depends on
+to carry cushion surfaces down the tree.
+
+---
 
 ## Licence
 

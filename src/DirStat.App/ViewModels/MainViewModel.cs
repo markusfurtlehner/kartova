@@ -241,6 +241,30 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _selectionDetailText = string.Empty;
 
     public ObservableCollection<ExtensionViewModel> Extensions { get; } = [];
+
+    /// <summary>The same file types grouped into families, which is how the pane shows them.</summary>
+    public ObservableCollection<ExtensionFamilyViewModel> ExtensionFamilies { get; } = [];
+
+    /// <summary>
+    /// Rebuilds the family sections from the flat extension list.
+    /// </summary>
+    /// <remarks>
+    /// A real scan turns up hundreds of extensions. Flat, that buries the answer to "what kind
+    /// of thing is filling this disk"; grouped, each family answers it in a line and still
+    /// opens up to the individual types.
+    /// </remarks>
+    private void RebuildExtensionFamilies()
+    {
+        ExtensionFamilies.Clear();
+
+        foreach (var group in Extensions
+                     .GroupBy(e => FileTypeColors.FamilyOf(e.Extension))
+                     .Select(g => new ExtensionFamilyViewModel(g.Key, g.ToArray()))
+                     .OrderByDescending(f => f.TotalSize))
+        {
+            ExtensionFamilies.Add(group);
+        }
+    }
     public ObservableCollection<BreadcrumbViewModel> Breadcrumbs { get; } = [];
 
     /// <summary>
@@ -250,7 +274,11 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private ExtensionViewModel? _selectedExtension;
 
-    partial void OnSelectedExtensionChanged(ExtensionViewModel? value)
+    partial void OnSelectedExtensionChanged(ExtensionViewModel? value) => IsolateExtension(value);
+
+    /// <summary>Narrows the tree and chart to one file type.</summary>
+    [RelayCommand]
+    private void IsolateExtension(ExtensionViewModel? value)
     {
         if (value is null || _synchronizingSelection) return;
 
@@ -277,6 +305,7 @@ public sealed partial class MainViewModel : ObservableObject
         Extensions.Clear();
         foreach (var stat in result.Extensions.Take(400))
             Extensions.Add(new ExtensionViewModel(stat));
+        RebuildExtensionFamilies();
 
         TreemapRoot = result.Root;
         SelectedNode = result.Root;
@@ -974,6 +1003,7 @@ public sealed partial class MainViewModel : ObservableObject
             Extensions.Clear();
             foreach (var stat in _result.Extensions.Take(400))
                 Extensions.Add(new ExtensionViewModel(stat));
+            RebuildExtensionFamilies();
         }
 
         if (SelectedNode is { } node) UpdateSelectionDetail(node);
@@ -1013,6 +1043,7 @@ public sealed partial class MainViewModel : ObservableObject
             Extensions.Clear();
             foreach (var stat in _result.Extensions.Take(400))
                 Extensions.Add(new ExtensionViewModel(stat));
+            RebuildExtensionFamilies();
         }
     }
 

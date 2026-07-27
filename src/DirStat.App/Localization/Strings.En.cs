@@ -217,6 +217,23 @@ public static partial class Strings
         ["Excl.Placeholder"] = "Folder name, for example node_modules",
         ["Excl.Empty"] = "No exclusions. Every folder is scanned.",
         ["Excl.Suggestions"] = "COMMON",
+        ["Insights.Item"] = "{0} item",
+
+        // --------------------------------------------------------------- families
+        ["Family.Video"] = "Video",
+        ["Family.Image"] = "Images",
+        ["Family.Audio"] = "Audio",
+        ["Family.Archive"] = "Archives",
+        ["Family.Document"] = "Documents",
+        ["Family.Code"] = "Code",
+        ["Family.Web"] = "Web",
+        ["Family.Executable"] = "Programs",
+        ["Family.Database"] = "Databases",
+        ["Family.Font"] = "Fonts",
+        ["Family.DiskImage"] = "Disc images",
+        ["Family.System"] = "System",
+        ["Family.Other"] = "Other",
+
         // -------------------------------------------------------------- tooltips
         ["Tooltip.Size"] = "Size",
         ["Tooltip.OnDisk"] = "On disk",

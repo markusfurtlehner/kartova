@@ -39,6 +39,55 @@ public static class FileTypeColors
 
     private static readonly Dictionary<string, uint> Curated = BuildCurated();
 
+    /// <summary>Broad groupings, used to collapse the file-type list into readable sections.</summary>
+    public enum Family
+    {
+        Video,
+        Image,
+        Audio,
+        Archive,
+        Document,
+        Code,
+        Web,
+        Executable,
+        Database,
+        Font,
+        DiskImage,
+        System,
+        Other,
+    }
+
+    private static readonly Dictionary<string, Family> FamilyByExtension = BuildFamilies();
+
+    /// <summary>
+    /// The family an extension belongs to.
+    /// </summary>
+    /// <remarks>
+    /// Only curated extensions have a family. Anything unrecognised is deliberately left as
+    /// Other rather than guessed at, because a wrong grouping is more confusing than none.
+    /// </remarks>
+    public static Family FamilyOf(string extension) =>
+        extension.Length > 0 && FamilyByExtension.TryGetValue(extension, out var family)
+            ? family
+            : Family.Other;
+
+    /// <summary>Representative colour for a family, for its section header.</summary>
+    public static uint ColorOfFamily(Family family) => family switch
+    {
+        Family.Video => Video,
+        Family.Image => Image,
+        Family.Audio => Audio,
+        Family.Archive => Archive,
+        Family.Document => Document,
+        Family.Code => Code,
+        Family.Web => Web,
+        Family.Executable => Executable,
+        Family.Database => Database,
+        Family.Font => Font,
+        Family.DiskImage => DiskImage,
+        _ => Systemish,
+    };
+
     /// <summary>Packed 0xAARRGGBB colour for an extension, including the leading dot.</summary>
     public static uint ForExtension(string extension) => ForExtension(extension.AsSpan());
 
@@ -69,6 +118,82 @@ public static class FileTypeColors
     /// as packed content rather than as a hole in the map.
     /// </summary>
     public const uint Directory = 0xFF47536E;
+
+    /// <summary>
+    /// Maps every curated extension to its family, derived from the same lists that assign
+    /// colours so the two can never disagree.
+    /// </summary>
+    private static Dictionary<string, Family> BuildFamilies()
+    {
+        var map = new Dictionary<string, Family>(256, StringComparer.OrdinalIgnoreCase);
+
+        void Assign(Family family, params string[] extensions)
+        {
+            foreach (var extension in extensions) map.TryAdd(extension, family);
+        }
+
+        foreach (var (family, extensions) in CuratedGroups()) Assign(family, extensions);
+        return map;
+    }
+
+    /// <summary>The single source for which extensions belong together.</summary>
+    private static IEnumerable<(Family Family, string[] Extensions)> CuratedGroups()
+    {
+        yield return (Family.Video, [
+            ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpg",
+            ".mpeg", ".m2ts", ".ts", ".vob", ".3gp", ".ogv", ".rmvb", ".divx"]);
+
+        yield return (Family.Image, [
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".svg",
+            ".ico", ".heic", ".heif", ".raw", ".cr2", ".nef", ".arw", ".dng", ".psd",
+            ".xcf", ".ai", ".eps", ".avif"]);
+
+        yield return (Family.Audio, [
+            ".mp3", ".flac", ".wav", ".aac", ".ogg", ".wma", ".m4a", ".opus", ".aiff",
+            ".alac", ".ape", ".mid", ".midi", ".amr"]);
+
+        yield return (Family.Archive, [
+            ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".zst", ".lz4",
+            ".cab", ".arj", ".lzh", ".tgz", ".tbz", ".pkg", ".deb", ".rpm", ".apk",
+            ".jar", ".war", ".nupkg", ".whl", ".crx", ".xpi"]);
+
+        yield return (Family.Document, [
+            ".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt", ".md", ".tex", ".epub",
+            ".mobi", ".azw3", ".djvu", ".pages", ".xls", ".xlsx", ".ods", ".csv",
+            ".tsv", ".ppt", ".pptx", ".odp", ".key", ".numbers", ".one"]);
+
+        yield return (Family.Code, [
+            ".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".cs", ".java", ".kt", ".swift",
+            ".py", ".rb", ".go", ".rs", ".php", ".pl", ".lua", ".r", ".jl", ".scala",
+            ".clj", ".ex", ".exs", ".erl", ".hs", ".ml", ".fs", ".fsx", ".vb", ".asm",
+            ".sh", ".bash", ".zsh", ".fish", ".ps1", ".psm1", ".bat", ".cmd", ".make",
+            ".cmake", ".gradle", ".sql", ".proto", ".graphql", ".ipynb"]);
+
+        yield return (Family.Web, [
+            ".html", ".htm", ".css", ".scss", ".sass", ".less", ".js", ".mjs", ".cjs",
+            ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".json", ".jsonc", ".xml", ".yaml",
+            ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".lock", ".wasm"]);
+
+        yield return (Family.Executable, [
+            ".exe", ".dll", ".so", ".dylib", ".app", ".msi", ".msix", ".appx",
+            ".com", ".bin", ".o", ".obj", ".lib", ".a", ".pdb", ".elf", ".ko",
+            ".sys", ".drv", ".ocx", ".pyd", ".node"]);
+
+        yield return (Family.Database, [
+            ".db", ".sqlite", ".sqlite3", ".mdb", ".accdb", ".mdf", ".ldf", ".frm",
+            ".ibd", ".dbf", ".realm", ".parquet", ".avro", ".orc", ".arrow"]);
+
+        yield return (Family.Font, [".ttf", ".otf", ".woff", ".woff2", ".eot", ".fon", ".pfb", ".ttc"]);
+
+        yield return (Family.DiskImage, [
+            ".iso", ".img", ".dmg", ".vhd", ".vhdx", ".vmdk", ".vdi", ".qcow2",
+            ".wim", ".esd", ".nrg", ".mds", ".cue", ".bin_cd"]);
+
+        yield return (Family.System, [
+            ".log", ".tmp", ".temp", ".bak", ".old", ".cache", ".swp", ".swo",
+            ".dmp", ".etl", ".evtx", ".crash", ".DS_Store", ".thumbs", ".lnk",
+            ".url", ".desktop", ".pid", ".sock"]);
+    }
 
     private static Dictionary<string, uint> BuildCurated()
     {

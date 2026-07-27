@@ -264,41 +264,74 @@
                        Text="{l:T Results.ClickToIsolate}" />
           </Grid>
 
-          <ListBox Grid.Row="1" ItemsSource="{Binding Extensions}"
-                   SelectedItem="{Binding SelectedExtension, Mode=TwoWay}"
-                   Background="Transparent" BorderThickness="0"
-                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ExtensionViewModel">
+          <!-- Grouped into families: hundreds of extensions read as noise, a dozen families
+               read as an answer. Each opens to the individual types underneath. -->
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding ExtensionFamilies}" Margin="0,0,0,12">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ExtensionFamilyViewModel">
+                  <StackPanel>
+                    <Button Classes="family-header" Command="{Binding ToggleCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            ToolTip.Tip="{Binding Tooltip}">
+                      <Grid ColumnDefinitions="Auto,Auto,*,Auto" RowDefinitions="Auto,Auto"
+                            Margin="14,8">
+                        <Path Grid.Row="0" Grid.Column="0" Width="7" Height="7" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiary}" VerticalAlignment="Center"
+                              Margin="0,0,8,0"
+                              Data="{Binding IsExpanded, Converter={x:Static views:Converters.Chevron}}" />
+                        <Border Grid.Row="0" Grid.Column="1" Width="10" Height="10" CornerRadius="3"
+                                Background="{Binding Swatch}" VerticalAlignment="Center"
+                                Margin="0,0,9,0" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Title}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding SizeText}"
+                                   Classes="numeric secondary" FontSize="12"
+                                   VerticalAlignment="Center" />
+                        <views:FractionBar Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2"
+                                           Fraction="{Binding Fraction}"
+                                           Fill="{Binding Swatch}"
+                                           Track="{DynamicResource RingTrack}"
+                                           BarHeight="4" Height="10" Margin="0,4,0,0" />
+                      </Grid>
+                    </Button>
+
+                    <ItemsControl ItemsSource="{Binding Members}" IsVisible="{Binding IsExpanded}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ExtensionViewModel">
+                          <Button Classes="family-member"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  ToolTip.Tip="{Binding Tooltip}"
+                                  Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).IsolateExtensionCommand}"
+                                  CommandParameter="{Binding}">
                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto"
-                      ToolTip.Tip="{Binding Tooltip}">
-                  <Border Grid.Row="0" Grid.Column="0" Width="10" Height="10" CornerRadius="3"
+                      Margin="34,3,14,3">
+                  <Border Grid.Row="0" Grid.Column="0" Width="8" Height="8" CornerRadius="2"
                           Background="{Binding Swatch}" VerticalAlignment="Center" Margin="0,0,9,0" />
 
                   <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DisplayName}"
-                             FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                             FontSize="12" TextTrimming="CharacterEllipsis"
                              VerticalAlignment="Center" />
 
                   <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding SizeText}"
-                             Classes="numeric secondary" FontSize="12" VerticalAlignment="Center" />
+                             Classes="numeric tertiary" FontSize="11.5" VerticalAlignment="Center" />
 
                   <views:FractionBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
                                      Fraction="{Binding Fraction}"
                                      Fill="{Binding Swatch}"
                                      Track="{DynamicResource RingTrack}"
-                                     BarHeight="4" Height="10" Margin="0,4,0,0" />
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-
-            <ListBox.Styles>
-              <Style Selector="ListBoxItem">
-                <Setter Property="Padding" Value="14,7" />
-                <Setter Property="MinHeight" Value="0" />
-                <Setter Property="CornerRadius" Value="0" />
-              </Style>
-            </ListBox.Styles>
-          </ListBox>
+                                     BarHeight="3" Height="9" Margin="0,3,0,0" />
+                                </Grid>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
         </Grid>
       </Border>
     </Grid>
@@ -436,6 +469,26 @@
   </Grid>
 
   <UserControl.Styles>
+    <Style Selector="Button.family-header">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.family-header:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+
+    <Style Selector="Button.family-member">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.family-member:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+
     <Style Selector="Button.suggestion">
       <Setter Property="Background" Value="{DynamicResource SurfaceBase}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
