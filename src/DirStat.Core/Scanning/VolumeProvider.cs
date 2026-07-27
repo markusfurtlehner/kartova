@@ -66,12 +66,39 @@ public static class VolumeProvider
             }
         }
 
-        // De-duplicate: Linux commonly reports the same device at several mount points.
-        var seen = new HashSet<string>(PathComparerOrdinal);
+        return Deduplicate(volumes);
+    }
+
+    /// <summary>
+    /// Collapses mount points that refer to the same underlying device.
+    /// </summary>
+    /// <remarks>
+    /// One device is routinely visible at several paths — bind mounts, containers, and WSL,
+    /// which surfaces the same disk as <c>/</c>, <c>/mnt/wslg/distro</c> and a Docker bind
+    /// path all at once. Offering each as a separate "drive" is pure noise in a tool whose
+    /// whole job is accounting for space, so the shortest mount point wins and the rest are
+    /// dropped. Where the device cannot be determined the mount point stands in, which at
+    /// worst leaves the previous behaviour.
+    /// </remarks>
+    private static IReadOnlyList<VolumeInfo> Deduplicate(List<VolumeInfo> volumes)
+    {
+        var devices = ReadMountDevices();
+        var seenPaths = new HashSet<string>(PathComparerOrdinal);
+        var seenDevices = new HashSet<string>(StringComparer.Ordinal);
         var unique = new List<VolumeInfo>(volumes.Count);
-        foreach (var v in volumes.OrderByDescending(v => v.TotalBytes))
-            if (seen.Add(v.RootPath))
-                unique.Add(v);
+
+        // Largest first, then shortest path, so the canonical mount is the one kept.
+        foreach (var volume in volumes
+                     .OrderByDescending(v => v.TotalBytes)
+                     .ThenBy(v => v.RootPath.Length))
+        {
+            if (!seenPaths.Add(volume.RootPath)) continue;
+
+            if (devices.TryGetValue(volume.RootPath, out var device) && !seenDevices.Add(device))
+                continue;
+
+            unique.Add(volume);
+        }
 
         return unique;
     }
@@ -104,6 +131,38 @@ public static class VolumeProvider
         }
     }
 
+    /// <summary>Maps mount point to backing device, read from <c>/proc/mounts</c>.</summary>
+    private static Dictionary<string, string> ReadMountDevices()
+    {
+        var map = new Dictionary<string, string>(PathComparerOrdinal);
+        if (!OperatingSystem.IsLinux()) return map;
+
+        try
+        {
+            foreach (var line in File.ReadLines("/proc/mounts"))
+            {
+                // device mountpoint fstype options dump pass
+                var parts = line.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2) continue;
+
+                var device = parts[0];
+                // Anonymous sources (tmpfs, none, overlay) identify nothing; skip them so
+                // unrelated mounts are not collapsed into one another.
+                if (!device.StartsWith('/')) continue;
+
+                // Octal escapes are used for spaces and tabs in mount paths.
+                var mountPoint = parts[1].Replace("\\040", " ").Replace("\\011", "\t");
+                map[mountPoint] = device;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Without the table we simply fall back to de-duplicating by path alone.
+        }
+
+        return map;
+    }
+
     private static StringComparer PathComparerOrdinal =>
         OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
@@ -128,10 +187,12 @@ public static class VolumeProvider
 
     private static readonly string[] PseudoFilesystems =
     [
-        "tmpfs", "devtmpfs", "devfs", "proc", "procfs", "sysfs", "cgroup", "cgroup2",
+        "tmpfs", "devtmpfs", "devfs", "udev", "proc", "procfs", "sysfs", "cgroup", "cgroup2",
         "squashfs", "overlay", "ramfs", "autofs", "debugfs", "tracefs", "securityfs",
         "pstore", "bpf", "configfs", "fusectl", "mqueue", "hugetlbfs", "binfmt_misc",
         "efivarfs", "nsfs", "fuse.gvfsd-fuse", "fuse.portal",
+        // Read-only images: a mounted ISO is not somewhere anyone frees space.
+        "iso9660", "isofs", "udf",
     ];
 
     private static bool IsPseudoFilesystem(DriveInfo drive)
@@ -150,6 +211,14 @@ public static class VolumeProvider
             if (path.StartsWith("/proc", StringComparison.Ordinal)) return true;
             if (path.StartsWith("/dev", StringComparison.Ordinal)) return true;
             if (path.StartsWith("/run", StringComparison.Ordinal)) return true;
+
+            // WSL plumbing. These are the distro's own machinery — driver shares, the WSLg
+            // session, Docker Desktop's bind mounts — not places a user stores anything.
+            // Windows drives stay visible, because /mnt/c and friends genuinely are volumes.
+            if (path.StartsWith("/mnt/wsl", StringComparison.Ordinal)) return true;
+            if (path.StartsWith("/usr/lib/wsl", StringComparison.Ordinal)) return true;
+            if (path.StartsWith("/Docker/", StringComparison.Ordinal)) return true;
+            if (path.StartsWith("/tmp/.X11-unix", StringComparison.Ordinal)) return true;
         }
         else if (OperatingSystem.IsMacOS())
         {
